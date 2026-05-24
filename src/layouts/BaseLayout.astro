@@ -48,6 +48,29 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? Astro.url);
       })();
     </script>
 
+
+    <!--
+      Critical inline CSS: hide the filter region + post grid before
+      global.css even loads, so the SSR "All visible" default state
+      can never be painted. setupFilter() applies the URL filter
+      state, indexes the visible chips/rows for a staggered entry,
+      then adds .is-ready. The container snaps visible — chips and
+      post rows do their own per-element cascade reveal (see
+      global.css), so the user sees the filtered state stream in
+      rather than a single block fade.
+    -->
+    <style is:inline>
+      /* visibility:hidden (not display:none) so the section still
+         claims its layout space — footer stays at its final
+         position from the very first paint. display:none was
+         causing footer + "文章" header to briefly bunch at the top
+         because the unrendered grid took zero height. */
+      .filter:not(.is-ready),
+      [data-posts-grid]:not(.is-ready) {
+        visibility: hidden !important;
+      }
+    </style>
+
     <link rel="icon" type="image/svg+xml" href={withBase('/favicon.svg')} />
     <link rel="canonical" href={canonical} />
     <!-- Web fonts (free, SIL OFL): Inter for Latin, Noto Sans TC for Chinese,
@@ -81,6 +104,74 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? Astro.url);
     <Footer />
     <SearchModal />
     <ThemeOverlay />
+
+    <!--
+      Pre-paint filter: if the URL carries filter params, apply the
+      same hidden-attribute logic that setupFilter's render() would
+      apply, but synchronously RIGHT NOW — before the browser
+      commits its first paint. This way the initial layout already
+      reflects the filtered state (filtered chip set + filtered
+      post set), so the footer sits at its final position from
+      frame 1. Without this, the SSR "all visible" layout takes its
+      full height, first paint locks footer at the bottom, then
+      setupFilter runs later and the page shrinks — footer
+      visibly jumps up.
+
+      Script runs inline (non-module), placed AFTER all .post-row /
+      .filter-chip elements have been parsed by the browser, so
+      the DOM queries find them. Logic duplicates render() from
+      the deferred module — minor DRY cost in exchange for zero
+      layout shift.
+    -->
+    <script is:inline>
+      (function () {
+        if (!location.search || location.search.length < 2) return;
+        var params = new URLSearchParams(location.search);
+        var cat = params.get('cat') || '';
+        var year = params.get('year') || '';
+        var tagsParam = params.get('tags');
+        var tags = tagsParam ? tagsParam.split(',').filter(Boolean) : [];
+        if (!cat && !year && tags.length === 0) return;
+
+        var posts = Array.prototype.slice.call(document.querySelectorAll('.post-row'));
+        var catReach = Object.create(null);
+        var yearReach = Object.create(null);
+        var tagReach = Object.create(null);
+
+        posts.forEach(function (row) {
+          var rCat = row.dataset.category || '';
+          var rYear = row.dataset.year || '';
+          var rTags;
+          try { rTags = JSON.parse(row.dataset.tags || '[]'); } catch (_) { rTags = []; }
+
+          var matchCat = !cat || rCat === cat;
+          var matchYear = !year || rYear === year;
+          var matchTags = tags.length === 0 || tags.every(function (t) { return rTags.indexOf(t) >= 0; });
+
+          if (matchYear && matchTags && rCat) catReach[rCat] = 1;
+          if (matchCat && matchTags && rYear) yearReach[rYear] = 1;
+          if (matchCat && matchYear) rTags.forEach(function (t) { tagReach[t] = 1; });
+
+          if (!(matchCat && matchYear && matchTags)) row.hidden = true;
+        });
+
+        function applyChips(group, reach, selectedSet) {
+          var chips = document.querySelectorAll('[data-filter-group="' + group + '"] .filter-chip');
+          chips.forEach(function (chip) {
+            var val = chip.dataset.filterValue || '';
+            if (val === '') return; // skip the "全部" chip
+            var sel = selectedSet[val] === 1;
+            if (!reach[val] && !sel) chip.hidden = true;
+          });
+        }
+        var catSel = {}; if (cat) catSel[cat] = 1;
+        var yearSel = {}; if (year) yearSel[year] = 1;
+        var tagSel = {}; tags.forEach(function (t) { tagSel[t] = 1; });
+        applyChips('category', catReach, catSel);
+        applyChips('year', yearReach, yearSel);
+        applyChips('tag', tagReach, tagSel);
+      })();
+    </script>
 
     <button id="back-to-top" class="back-to-top" type="button" aria-label="回到頂部">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -952,6 +1043,23 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? Astro.url);
         });
 
         render();
+        // First render has applied the URL filter — set --chip-i /
+        // --row-i on each currently-visible chip and row so they can
+        // cascade in one-by-one (search-modal style) instead of
+        // fading in as a single block. Re-indexing by visible order
+        // (not DOM order) so the stagger has no gaps where hidden
+        // siblings used to be.
+        const visibleChips = root
+          ? Array.from(root.querySelectorAll<HTMLElement>('.filter-chip')).filter((c) => !c.hidden)
+          : [];
+        visibleChips.forEach((c, i) => c.style.setProperty('--chip-i', String(i)));
+        const visibleRows = cards.filter((c) => !c.hidden);
+        visibleRows.forEach((r, i) => r.style.setProperty('--row-i', String(i)));
+        // Add .is-ready: the container snaps visible (per the head
+        // inline style), and the cascade animations on chips +
+        // rows trigger via their own keyframes (see global.css).
+        root?.classList.add('is-ready');
+        grid?.classList.add('is-ready');
       };
 
       // ---------- Back to top ----------

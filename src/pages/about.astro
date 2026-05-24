@@ -830,6 +830,41 @@ const reports = [
       });
     };
 
+    // Scare reactions — mail visibly flinches when X is hit. Three
+    // ❗ bubbles pop above mail across the first three taps (each
+    // tap adds another), while mail itself does a quick startle
+    // jolt on every tap (1-4). The cumulative ❗ bubbles read as
+    // mail's panic rising as the X takes more damage.
+    const SCARE_OFFSETS: Array<{ offsetX: number; offsetY: number; rotate: string }> = [
+      { offsetX:  20, offsetY: -22, rotate: '-10deg' },
+      { offsetX: -18, offsetY: -30, rotate: '8deg'   },
+      { offsetX:  26, offsetY: -36, rotate: '-4deg'  },
+    ];
+    const spawnScareBubble = (idx: number) => {
+      const rect = likeBtn.getBoundingClientRect();
+      const o = SCARE_OFFSETS[Math.min(idx, SCARE_OFFSETS.length - 1)];
+      const cx = rect.left + rect.width / 2 + o.offsetX;
+      const cy = rect.top + o.offsetY;
+      const bubble = document.createElement('div');
+      bubble.className = 'p5-bubble';
+      bubble.textContent = '❗'; // ❗ heavy red exclamation
+      bubble.style.left = `${cx}px`;
+      bubble.style.top = `${cy}px`;
+      bubble.style.setProperty('--rotate', o.rotate);
+      document.body.appendChild(bubble);
+      window.setTimeout(() => bubble.remove(), BUBBLE_LIFE);
+    };
+    // Mail startle — quick jump + alternating tilt, retriggered on
+    // every tap by removing the class, forcing reflow, then
+    // re-adding. Without the reflow toggle, tapping while the
+    // animation is still running wouldn't restart it.
+    const scareMail = () => {
+      likeBtn.classList.remove('is-scared');
+      void likeBtn.offsetWidth;
+      likeBtn.classList.add('is-scared');
+      window.setTimeout(() => likeBtn.classList.remove('is-scared'), 360);
+    };
+
     // Crack — an SVG zigzag path drawn across the X button. Each
     // tap adds a new crack with random segment angles and an
     // optional fork, so the cracks look like a real surface
@@ -1011,6 +1046,14 @@ const reports = [
         spawnStreaks(passBtn, TAP_DRIPS[tapCount]);
         addCrack(passBtn);
         addStains(TAP_STAINS[tapCount]);
+        // Mail flinches on every hit. The first three hits also
+        // pop a red ❗ bubble — by the third strike there are three
+        // exclamation marks stacked above mail, panic visibly
+        // rising. Tap 4 is silent (mail has given up reacting).
+        scareMail();
+        if (tapCount <= 3) {
+          spawnScareBubble(tapCount - 1);
+        }
       }
 
       window.setTimeout(() => { cooldown = false; }, 160);
@@ -1039,4 +1082,29 @@ const reports = [
   };
 
   document.addEventListener('astro:page-load', setupCardActions);
+
+  // Initial page reveal — sections cascade in like the post-list's
+  // filter→posts choreography. Hero first, then each writeup
+  // section (work / edu / cert / hitcon / activities). The closing
+  // card is excluded — it has its own scroll-driven materialise.
+  // The .about-ready class is removed before each view-transition
+  // swap so it can re-trigger when navigating back to /about.
+  const setupAboutReveal = () => {
+    if (!document.querySelector('.about-end')) return;
+    const sections = Array.from(
+      document.querySelectorAll<HTMLElement>('.hero, .posts-section')
+    );
+    sections.forEach((s, i) => s.style.setProperty('--section-i', String(i)));
+    // Remove+reflow+add to guarantee the animation restarts on
+    // every page navigation (same body element persists across
+    // Astro view transitions, so the class may already be there).
+    document.body.classList.remove('about-ready');
+    void document.body.offsetWidth;
+    document.body.classList.add('about-ready');
+  };
+
+  document.addEventListener('astro:page-load', setupAboutReveal);
+  document.addEventListener('astro:before-swap', () => {
+    document.body.classList.remove('about-ready');
+  });
 </script>

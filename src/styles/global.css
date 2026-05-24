@@ -807,6 +807,79 @@ a.tag:hover {
   grid-template-columns: minmax(0, 1fr);
   gap: 0.7rem;
 }
+/* Hydration guard: see the inline <style> block in BaseLayout's
+   <head>. The container itself is hidden inline so first paint
+   never shows the SSR "all visible" default. Once .is-ready is
+   added (after setupFilter has applied the URL filter), the
+   container snaps visible and the per-chip / per-row cascades
+   below stream the filtered state in. `backwards` fill on the
+   animation holds each element at the from-state during its
+   pre-delay window, so no chip ever flashes at full opacity
+   between container-reveal and its own animation start. */
+.filter.is-ready .filter-chip {
+  animation: chip-stagger-in 280ms cubic-bezier(0.22, 1, 0.36, 1)
+    calc(var(--chip-i, 0) * 22ms + 60ms) backwards;
+}
+/* Posts wait for filter chips to FINISH cascading before they
+   start streaming in. Filter cascade typically wraps at
+   ~60ms + (chip_count - 1) * 22ms + 280ms duration; for a chip
+   row of ~10 chips that's ~540ms. 600ms gives a small breath
+   then posts begin their own cascade. Creates a clear
+   "filter → results" rhythm: user sees the filter chips settle
+   first, then the matching posts populate. */
+[data-posts-grid].is-ready .post-row:not([hidden]) {
+  animation: row-stagger-in 320ms cubic-bezier(0.22, 1, 0.36, 1)
+    calc(var(--row-i, 0) * 28ms + 600ms) backwards;
+}
+@keyframes chip-stagger-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes row-stagger-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .filter.is-ready .filter-chip,
+  [data-posts-grid].is-ready .post-row:not([hidden]) {
+    animation: none;
+  }
+}
+
+/* About-page initial reveal — same vocabulary as the post-list
+   cascade (chip + row stagger). Each top-level section cascades
+   in with a small delay between them, so the about page reads as
+   "loading in" rather than appearing all at once.
+   Scoped to body:has(.about-end) so it ONLY hits the about page;
+   the home post list uses .posts-section too but has its own
+   per-row stagger that takes precedence. */
+body:has(.about-end) .hero,
+body:has(.about-end) .posts-section {
+  opacity: 0;
+}
+body:has(.about-end).about-ready .hero,
+body:has(.about-end).about-ready .posts-section {
+  /* `both` fill mode: backwards holds the from-state during the
+     pre-delay (so the section starts invisible + slightly below
+     its final spot), forwards holds the to-state after the
+     animation ends (so the section STAYS visible). Without
+     `forwards`, the animation would end and the base rule
+     (opacity: 0 above) would re-apply — content would appear
+     for ~1s then snap back to black. */
+  animation: about-section-in 560ms cubic-bezier(0.22, 1, 0.36, 1)
+    calc(var(--section-i, 0) * 110ms + 60ms) both;
+}
+@keyframes about-section-in {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  body:has(.about-end) .hero,
+  body:has(.about-end) .posts-section {
+    opacity: 1;
+    animation: none;
+  }
+}
 .filter__row {
   display: flex;
   align-items: flex-start;
@@ -1899,6 +1972,23 @@ body:has([data-about-end]) .site-footer {
   28%  { translate: calc(var(--walk-x) - 4px) 3px;    rotate: -14deg; }
   62%  { translate: calc(var(--walk-x) - 4px) 3px;    rotate: -14deg; }
   100% { translate: var(--walk-x) 0;                  rotate: 0deg;   }
+}
+
+/* Scare jolt — mail flinches every time X is hit (taps 1-4).
+   Quick jump up + alternating tilt mimics a startled creature
+   reaction. No `forwards` fill mode so mail returns to its
+   neutral position automatically after the animation. JS toggles
+   .is-scared off→on with a forced reflow between to retrigger
+   the animation on rapid successive taps. */
+.about-end__action--like.is-scared {
+  animation: mail-scare 340ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes mail-scare {
+  0%   { translate: 0 0;     rotate: 0deg;   }
+  22%  { translate: 0 -9px;  rotate: 14deg;  }
+  48%  { translate: 0 -3px;  rotate: -10deg; }
+  72%  { translate: 0 -1px;  rotate: 5deg;   }
+  100% { translate: 0 0;     rotate: 0deg;   }
 }
 
 /* Card-level shake — applied to .about-end__frame on every tap.
