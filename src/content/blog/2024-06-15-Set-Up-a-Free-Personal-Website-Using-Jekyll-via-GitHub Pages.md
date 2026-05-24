@@ -3,8 +3,8 @@ layout: post
 title: 透過 Github Page 使用 jekyll 架設免費的個人網站
 description: 會寫 markdown 就可以架屬於自己的網站欸欸欸欸，還不用顧 Server
 date: 2024-06-15 23:25:00 +0800
-categories: 實作筆記 GitHub
-tags: Web Github 環境設置 macOS 實作
+category: 實作筆記
+tags: GitHub Jekyll macOS 環境設置
 published: true
 ---
 

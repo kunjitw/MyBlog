@@ -115,6 +115,12 @@
 html {
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
+  /* Mobile browsers draw a translucent blue rectangle on any
+     interactive element when tapped — it's larger than the button
+     and always square-cornered, which clashes with rounded UI.
+     Suppress it globally; each button has its own :active / :focus
+     styling for press feedback. */
+  -webkit-tap-highlight-color: transparent;
   /* Defence-in-depth against horizontal scroll: body already has
      overflow-x: hidden, but on post pages a wide element (long
      code line, oversized image, etc.) was producing a scrollable
@@ -180,7 +186,7 @@ hr {
 .container {
   max-width: var(--max-width);
   margin: 0 auto;
-  padding: 2rem 1.5rem 0.5rem;
+  padding: calc(var(--header-h, 58px) + 2rem) 1.5rem 0.5rem;
 }
 .container--wide { max-width: var(--max-width-wide); }
 
@@ -226,14 +232,22 @@ blockquote p { margin: 0.4rem 0; }
    Header — frosted glass
    =============================================================== */
 .site-header {
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 50;
   background: var(--header-bg);
   backdrop-filter: saturate(180%) blur(20px);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
   border-bottom: 1px solid var(--border);
   transition: background var(--dur-fast) var(--ease-standard);
+}
+/* Hide-on-scroll-down. JS controls when top transition is active:
+   - hiding  → JS adds top transition so header slides smoothly up
+   - showing → JS keeps no top transition so header snaps instantly into view */
+.site-header.is-hidden {
+  top: calc(0px - var(--header-h, 58px) - 1px);
 }
 .site-header .inner {
   max-width: var(--max-width-wide);
@@ -827,6 +841,14 @@ a.tag:hover {
   animation: chip-stagger-in 280ms cubic-bezier(0.22, 1, 0.36, 1)
     calc(var(--chip-i, 0) * 22ms + 60ms) backwards;
 }
+/* Re-stagger chips that just became visible after a filter change
+   (added by applyChips() in BaseLayout). Same easing/duration as
+   the first-load cascade but with no leading delay, since the user
+   triggered it and is watching. */
+.filter-chip.is-restaggering {
+  animation: chip-stagger-in 280ms cubic-bezier(0.22, 1, 0.36, 1)
+    calc(var(--chip-i, 0) * 26ms) backwards;
+}
 /* Posts wait for filter chips to FINISH cascading before they
    start streaming in. Filter cascade typically wraps at
    ~60ms + (chip_count - 1) * 22ms + 280ms duration; for a chip
@@ -848,6 +870,7 @@ a.tag:hover {
 }
 @media (prefers-reduced-motion: reduce) {
   .filter.is-ready .filter-chip,
+  .filter-chip.is-restaggering,
   [data-posts-grid].is-ready .post-row:not([hidden]) {
     animation: none;
   }
@@ -957,6 +980,8 @@ body:has(.about-end).about-ready .posts-section {
   opacity: 0.6;
 }
 
+/* Exclude-AI chip — inherits all filter-chip styles, no extra overrides. */
+
 .filter-empty {
   color: var(--fg-dim);
   font-size: 0.95rem;
@@ -978,6 +1003,8 @@ body:has(.about-end).about-ready .posts-section {
   right: 0;
   z-index: 40;
   pointer-events: none;
+  /* Slide up flush with the viewport when the header hides. */
+  transition: top 280ms cubic-bezier(0.4, 0, 0.2, 1);
   /* The bar's *background* lives on ::before so it can fade in
      independently of the chips. Chips need to stay opaque while
      sliding from their filter-row position up to here. */
@@ -1143,12 +1170,16 @@ body:has(.about-end).about-ready .posts-section {
   border-color: var(--fg-dim);
 }
 
+/* When the header has slid off screen, the pinned bar rides up to
+   top: 0 so it stays flush with the viewport edge. Uses the same
+   280 ms easing as the header translate so they move in lockstep. */
+body:has(.site-header.is-hidden) .filter-pinned {
+  top: 0;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .filter-pinned {
-    transition: opacity 120ms linear;
-    transform: none !important;
-    clip-path: none !important;
-  }
+  .site-header { transition: background var(--dur-fast) var(--ease-standard), top 0s; }
+  .filter-pinned { transition: none; }
   .filter-pinned__chip { transition: none; }
 }
 
@@ -1183,6 +1214,10 @@ body:has(.about-end).about-ready .posts-section {
   display: flex;
   justify-content: center;
   padding: 0 1rem;
+  transition: top 280ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+body:has(.site-header.is-hidden) .about-card {
+  top: 8px;
 }
 .about-card.is-active .about-card__inner {
   pointer-events: auto;

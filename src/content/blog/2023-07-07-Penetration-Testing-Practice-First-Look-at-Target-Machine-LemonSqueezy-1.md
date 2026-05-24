@@ -3,8 +3,8 @@ layout: post
 title: "滲透測試練習 - 初見靶機 - LemonSqueezy: 1"
 description: 第一次打靶機，整篇都在碎碎念
 date: 2023-07-07 22:00:00 +0800
-categories: Writeup 靶機
-tags: 滲透測試 Writeup 靶機 VulnHub
+category: Writeup 靶機
+tags: VulnHub 靶機 滲透測試
 ---
 
 ## 這篇文章在幹嘛？

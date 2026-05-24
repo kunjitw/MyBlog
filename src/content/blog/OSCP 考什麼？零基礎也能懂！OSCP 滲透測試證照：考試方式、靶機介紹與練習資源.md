@@ -3,8 +3,8 @@ layout: post
 title: OSCP 考什麼？零基礎也能懂！OSCP 滲透測試證照：考試方式、靶機介紹與練習資源
 description: 寫給朋友看的。
 date: 2025-11-25 18:42:12 +0800 
-categories: 資訊安全 證照考試
-tags: OSCP 滲透測試 Active Directory 靶機 資安 提權
+category: 心得
+tags: [OSCP, 滲透測試, 靶機, 提權, "Active Directory", AI輔助寫作]
 ---
 
 # 考試資訊

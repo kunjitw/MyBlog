@@ -3,8 +3,8 @@ layout: post
 title: "HackTheBox - Codify Writeup"
 description: 就是靶機WP
 date: 2023-11-23 00:00:00 +0800
-categories: Writeup 靶機
-tags: 滲透測試 HackTheBox
+category: Writeup 靶機
+tags: HackTheBox 靶機 滲透測試
 ---
 
 ## 環境

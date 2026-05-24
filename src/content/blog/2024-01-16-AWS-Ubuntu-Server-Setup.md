@@ -3,8 +3,8 @@ layout: post
 title: 使用 AWS 架設免費 Ubuntu Linux Server 
 description: 免費的 Linux Server
 date: 2024-01-16 14:24:00 +0800
-categories: 實作筆記 AWS
-tags: AWS 環境設置 Ubuntu Linux 實作
+category: 實作筆記
+tags: AWS Linux 環境設置
 ---
 
 ## 建立步驟

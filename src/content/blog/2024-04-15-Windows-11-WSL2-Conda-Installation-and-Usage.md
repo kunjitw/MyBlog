@@ -3,8 +3,8 @@ layout: post
 title: Windows11 WSL2 conda 安裝與使用
 description: 記錄了在 W11 設置 WSL2 安裝 conda 的過程
 date: 2024-04-15 17:00:00 +0800
-categories: 實作筆記 Windows
-tags: WSL2 Windows Python Conda 環境設置 實作
+category: 實作筆記
+tags: WSL2 Windows Python Conda 環境設置
 ---
 
 ## WSL2 前置

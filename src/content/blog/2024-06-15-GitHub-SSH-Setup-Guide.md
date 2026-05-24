@@ -3,8 +3,8 @@ layout: post
 title: Github SSH 設置
 description: 設置 GitHub SSH clone, push 專案
 date: 2024-06-15 22:00:00 +0800
-categories: 實作筆記 GitHub
-tags: Github 環境設置 SSH macOS 實作
+category: 實作筆記
+tags: GitHub SSH macOS 環境設置
 ---
 
 ## 環境

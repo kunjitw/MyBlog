@@ -3,8 +3,8 @@ layout: post
 title: 2023 AIS3 Pre-Exam Writeup
 description: 人生第一場 CTF，瞭解到了通靈的重要
 date: 2023-05-21 00:00:00 +0800
-categories: Writeup CTF
-tags: AIS3 Writeup CTF
+category: Writeup CTF
+tags: AIS3 CTF
 ---
 
 ## Misc

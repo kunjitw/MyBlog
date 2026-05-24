@@ -42,6 +42,15 @@ const hasFilters = categories.length > 0 || tags.length > 0 || years.length > 0;
 
   {hasFilters && (
     <section class="filter" data-filter>
+      <div class="filter__row" data-filter-row>
+        <span class="filter__label">排除</span>
+        <div class="filter__chips" data-exclude-group>
+          <button type="button" class="filter-chip filter-chip--all is-active" data-exclude-value="">關閉</button>
+          <button type="button" class="filter-chip filter-chip--exclude-ai" data-exclude-value="ai" data-exclude-ai aria-pressed="false">
+            排除 AI 輔助寫作
+          </button>
+        </div>
+      </div>
       {years.length > 0 && (
         <div class="filter__row" data-filter-row>
           <span class="filter__label">年份</span>

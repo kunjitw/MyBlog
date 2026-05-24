@@ -3,8 +3,8 @@ layout: post
 title: HITCON Community 2023 - Re:CTF Writeup
 description:  考古題
 date: 2023-08-17 00:00:00 +0800
-categories: Writeup CTF
-tags: Writeup CTF
+category: Writeup CTF
+tags: HITCON CTF 逆向
 ---
 
 ## misc

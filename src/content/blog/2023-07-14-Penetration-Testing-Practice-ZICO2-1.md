@@ -3,8 +3,8 @@ layout: post
 title: "滲透測試練習 - ZICO2: 1"
 description: 第二台練習的靶機，廢話很多
 date: 2023-07-14 00:00:00 +0800
-categories: Writeup 靶機
-tags: 滲透測試 Vulnhub Writeup 靶機
+category: Writeup 靶機
+tags: VulnHub 靶機 滲透測試
 ---
 
 ## 靶機下載

@@ -3,8 +3,8 @@ layout: post
 title: 2024 AIS3 Pre-Exam Writeup
 description: 再戰 AIS3 Pre-Exam
 date: 2024-07-01 00:00:00 +0800
-categories: Writeup CTF
-tags: AIS3
+category: Writeup CTF
+tags: AIS3 CTF
 published: true
 ---
 

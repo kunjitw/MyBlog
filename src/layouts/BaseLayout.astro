@@ -131,7 +131,16 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? Astro.url);
         var year = params.get('year') || '';
         var tagsParam = params.get('tags');
         var tags = tagsParam ? tagsParam.split(',').filter(Boolean) : [];
-        if (!cat && !year && tags.length === 0) return;
+        var noai = params.get('noai') === '1';
+        if (!cat && !year && tags.length === 0 && !noai) return;
+
+        // Sync the exclude row before first paint.
+        if (noai) {
+          var aiChip = document.querySelector('[data-exclude-ai]');
+          if (aiChip) { aiChip.setAttribute('aria-pressed', 'true'); aiChip.classList.add('is-active'); }
+          var offChip = document.querySelector('[data-exclude-value=""]');
+          if (offChip) offChip.classList.remove('is-active');
+        }
 
         var posts = Array.prototype.slice.call(document.querySelectorAll('.post-row'));
         var catReach = Object.create(null);
@@ -147,12 +156,13 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? Astro.url);
           var matchCat = !cat || rCat === cat;
           var matchYear = !year || rYear === year;
           var matchTags = tags.length === 0 || tags.every(function (t) { return rTags.indexOf(t) >= 0; });
+          var matchNoAI = !noai || rTags.indexOf('AI輔助寫作') < 0;
 
-          if (matchYear && matchTags && rCat) catReach[rCat] = 1;
-          if (matchCat && matchTags && rYear) yearReach[rYear] = 1;
-          if (matchCat && matchYear) rTags.forEach(function (t) { tagReach[t] = 1; });
+          if (matchYear && matchTags && matchNoAI && rCat) catReach[rCat] = 1;
+          if (matchCat && matchTags && matchNoAI && rYear) yearReach[rYear] = 1;
+          if (matchCat && matchYear && matchNoAI) rTags.forEach(function (t) { tagReach[t] = 1; });
 
-          if (!(matchCat && matchYear && matchTags)) row.hidden = true;
+          if (!(matchCat && matchYear && matchTags && matchNoAI)) row.hidden = true;
         });
 
         function applyChips(group, reach, selectedSet) {
@@ -591,6 +601,59 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? Astro.url);
         document.documentElement.style.setProperty('--header-h', `${h}px`);
       };
 
+      // Hide header on scroll-down, reveal on scroll-up.
+      // Threshold: must scroll down 60 px past the initial position before
+      // hiding (avoids hiding on tiny bounces). Any upward movement reveals
+      // immediately. Always show at the very top of the page.
+      const setupHeaderHide = () => {
+        const header = document.querySelector<HTMLElement>('.site-header');
+        if (!header) return;
+
+        let lastY = window.scrollY;
+        let downAccum = 0;
+        const HIDE_THRESHOLD = 60;
+        const TOP_TRANSITION = 'background var(--dur-fast) var(--ease-standard), top 280ms cubic-bezier(0.4, 0, 0.2, 1)';
+
+        const w = window as any;
+        if (w.__headerHideListener) {
+          document.removeEventListener('scroll', w.__headerHideListener);
+        }
+
+        const reduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        const show = () => {
+          if (!reduced()) header.style.transition = TOP_TRANSITION;
+          header.classList.remove('is-hidden');
+        };
+
+        const hide = () => {
+          if (!reduced()) header.style.transition = TOP_TRANSITION;
+          header.classList.add('is-hidden');
+        };
+
+        const onScroll = () => {
+          const y = window.scrollY;
+          const delta = y - lastY;
+          lastY = y;
+
+          if (y < 10) {
+            show();
+            downAccum = 0;
+            return;
+          }
+          if (delta > 0) {
+            downAccum += delta;
+            if (downAccum > HIDE_THRESHOLD) hide();
+          } else {
+            downAccum = 0;
+            show();
+          }
+        };
+
+        w.__headerHideListener = onScroll;
+        document.addEventListener('scroll', onScroll, { passive: true });
+      };
+
       // ---------- Post filter (category single-select + tags multi-select) ----------
       const setupFilter = () => {
         const root = document.querySelector<HTMLElement>('[data-filter]');
@@ -601,6 +664,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? Astro.url);
         const catGroup = root?.querySelector<HTMLElement>('[data-filter-group="category"]') ?? null;
         const yearGroup = root?.querySelector<HTMLElement>('[data-filter-group="year"]') ?? null;
         const tagGroup = root?.querySelector<HTMLElement>('[data-filter-group="tag"]') ?? null;
+        const excludeGroup = root?.querySelector<HTMLElement>('[data-exclude-group]') ?? null;
         const cards = Array.from(grid.querySelectorAll<HTMLElement>('.post-row'));
 
         const pinnedBar = document.querySelector<HTMLElement>('[data-filter-pinned]');
@@ -618,6 +682,9 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? Astro.url);
         let selectedCat = '';
         let selectedYear = '';
         let selectedTags = new Set<string>();
+        let excludeAI = false;
+
+        const excludeAiBtn = root?.querySelector<HTMLButtonElement>('[data-exclude-ai]') ?? null;
 
         // Initial state from URL params
         const params = new URLSearchParams(window.location.search);
@@ -625,6 +692,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? Astro.url);
         selectedYear = params.get('year') ?? '';
         const tagParam = params.get('tags');
         if (tagParam) selectedTags = new Set(tagParam.split(',').filter(Boolean));
+        excludeAI = params.get('noai') === '1';
 
         const parseList = (raw: string | undefined): string[] => {
           if (!raw) return [];
@@ -646,6 +714,8 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? Astro.url);
           else u.searchParams.delete('year');
           if (selectedTags.size > 0) u.searchParams.set('tags', Array.from(selectedTags).join(','));
           else u.searchParams.delete('tags');
+          if (excludeAI) u.searchParams.set('noai', '1');
+          else u.searchParams.delete('noai');
           // Keep the existing history state — passing null would clobber the
           // ClientRouter's state and break the browser Back button.
           history.replaceState(history.state, '', u.toString());
@@ -656,6 +726,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? Astro.url);
         const matchYear = (p: Facets) => selectedYear === '' || p.year === selectedYear;
         const matchTags = (p: Facets) =>
           selectedTags.size === 0 || Array.from(selectedTags).every((t) => p.tags.includes(t));
+        const matchNoAI = (p: Facets) => !excludeAI || !p.tags.includes('AI輔助寫作');
 
         // Render-count guard: the first call is hydration (URL → state),
         // which shouldn't animate (we'd be transitioning from a fictional
@@ -675,17 +746,25 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? Astro.url);
           const yearCounts = new Map<string, number>();
           const tagCounts = new Map<string, number>();
           for (const p of postData) {
-            if (matchYear(p) && matchTags(p) && p.category) {
+            if (matchYear(p) && matchTags(p) && matchNoAI(p) && p.category) {
               catCounts.set(p.category, (catCounts.get(p.category) ?? 0) + 1);
             }
-            if (matchCat(p) && matchTags(p) && p.year) {
+            if (matchCat(p) && matchTags(p) && matchNoAI(p) && p.year) {
               yearCounts.set(p.year, (yearCounts.get(p.year) ?? 0) + 1);
             }
-            if (matchCat(p) && matchYear(p)) {
+            if (matchCat(p) && matchYear(p) && matchNoAI(p)) {
               for (const t of p.tags) {
                 tagCounts.set(t, (tagCounts.get(t) ?? 0) + 1);
               }
             }
+          }
+
+          // Sync exclude row: "關閉" chip and "AI 輔助寫作" chip.
+          excludeGroup?.querySelector<HTMLElement>('[data-exclude-value=""]')
+            ?.classList.toggle('is-active', !excludeAI);
+          if (excludeAiBtn) {
+            excludeAiBtn.setAttribute('aria-pressed', String(excludeAI));
+            excludeAiBtn.classList.toggle('is-active', excludeAI);
           }
 
           const applyChips = (
@@ -694,6 +773,13 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? Astro.url);
             isSelected: (v: string) => boolean,
             allActive: boolean,
           ) => {
+            // Track whether anything meaningful changed in this group.
+            // Covers: chip appears/disappears (hidden toggle) AND count
+            // number changes. The count check catches the "全部 → specific"
+            // case where no chip becomes hidden but every visible chip's
+            // number drops — the group has clearly updated and should
+            // re-cascade even if no chips entered/left.
+            let groupChanged = false;
             group?.querySelectorAll<HTMLElement>('.filter-chip').forEach((chip) => {
               const val = chip.dataset.filterValue ?? '';
               if (val === '') {
@@ -702,11 +788,28 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? Astro.url);
               }
               const count = counts.get(val) ?? 0;
               const sel = isSelected(val);
-              chip.hidden = count === 0 && !sel;
-              chip.classList.toggle('is-active', sel);
+              const wasHidden = chip.hidden;
+              const nextHidden = count === 0 && !sel;
               const countEl = chip.querySelector<HTMLElement>('.filter-chip__count');
+              const prevCount = countEl ? Number(countEl.textContent) : count;
+              if (wasHidden !== nextHidden || prevCount !== count) groupChanged = true;
+              chip.hidden = nextHidden;
+              chip.classList.toggle('is-active', sel);
               if (countEl) countEl.textContent = String(count);
             });
+            // Re-stagger every currently-visible chip in the group so the
+            // set reads as "freshly populated" regardless of which direction
+            // the visibility change went.
+            if (renderCount > 0 && groupChanged) {
+              let idx = 0;
+              group?.querySelectorAll<HTMLElement>('.filter-chip').forEach((chip) => {
+                if (chip.hidden) return;
+                chip.style.setProperty('--chip-i', String(idx++));
+                chip.classList.remove('is-restaggering');
+                void chip.offsetWidth;
+                chip.classList.add('is-restaggering');
+              });
+            }
           };
 
           applyChips(catGroup,  catCounts,  (v) => v === selectedCat,    selectedCat === '');
@@ -717,7 +820,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? Astro.url);
           // animate a simple opacity crossfade per row — much lighter than
           // wrapping the layout in a view-transition (which captured the
           // entire viewport and FLIP-ed every card on every chip toggle).
-          const newVisible = postData.map((p) => matchCat(p) && matchYear(p) && matchTags(p));
+          const newVisible = postData.map((p) => matchCat(p) && matchYear(p) && matchTags(p) && matchNoAI(p));
           let shown = newVisible.filter((v) => v).length;
 
           const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -754,11 +857,12 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? Astro.url);
           updateURL();
         };
 
-        type PinItem = { kind: 'year' | 'cat' | 'tag'; value: string; label: string };
+        type PinItem = { kind: 'year' | 'cat' | 'tag' | 'exclude-ai'; value: string; label: string };
 
         const computePinItems = (): PinItem[] => {
           const out: PinItem[] = [];
-          // Order follows the document: year → category → tags-in-DOM-order
+          // Order follows the document: exclude → year → category → tags
+          if (excludeAI) out.push({ kind: 'exclude-ai', value: 'ai', label: '排除 AI 輔助寫作' });
           if (selectedYear) out.push({ kind: 'year', value: selectedYear, label: selectedYear });
           if (selectedCat) out.push({ kind: 'cat', value: selectedCat, label: selectedCat });
           for (const t of originalTagOrder) {
@@ -768,6 +872,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? Astro.url);
         };
 
         const findSourceChip = (kind: string, value: string): HTMLElement | null => {
+          if (kind === 'exclude-ai') return excludeAiBtn;
           const groupKey = kind === 'cat' ? 'category' : kind;
           const grp = document.querySelector<HTMLElement>(`[data-filter-group="${groupKey}"]`);
           if (!grp) return null;
@@ -992,12 +1097,14 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? Astro.url);
           if (kind === 'year') selectedYear = '';
           else if (kind === 'cat') selectedCat = '';
           else if (kind === 'tag') selectedTags.delete(val);
+          else if (kind === 'exclude-ai') excludeAI = false;
           render();
         });
         pinnedClear?.addEventListener('click', () => {
           selectedCat = '';
           selectedYear = '';
           selectedTags.clear();
+          excludeAI = false;
           render();
         });
 
@@ -1039,6 +1146,13 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? Astro.url);
           } else {
             selectedTags.add(val);
           }
+          render();
+        });
+
+        excludeGroup?.addEventListener('click', (e) => {
+          const btn = (e.target as HTMLElement).closest<HTMLElement>('[data-exclude-value]');
+          if (!btn) return;
+          excludeAI = btn.dataset.excludeValue === 'ai';
           render();
         });
 
@@ -1177,6 +1291,12 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? Astro.url);
         setupBackToTop();
         captureBackFromPost();
         setupReturnFromPost();
+        setupHeaderHide();
+      });
+
+      // Show header on every page transition — the new page starts at top.
+      document.addEventListener('astro:before-swap', () => {
+        document.querySelector('.site-header')?.classList.remove('is-hidden');
       });
     </script>
   </body>
