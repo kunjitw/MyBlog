@@ -1,0 +1,1075 @@
+---
+import '../styles/global.css';
+import { ClientRouter } from 'astro:transitions';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import ThemeOverlay from '../components/ThemeOverlay.astro';
+import SearchModal from '../components/SearchModal.astro';
+import { SITE_TITLE, SITE_DESCRIPTION } from '../consts';
+import { withBase } from '../utils/url';
+
+type Props = {
+  title?: string;
+  description?: string;
+  wide?: boolean;
+  fullTitle?: boolean;
+};
+
+const { title, description = SITE_DESCRIPTION, wide = false, fullTitle = false } = Astro.props;
+const pageTitle = title
+  ? (fullTitle ? title : `${title} · ${SITE_TITLE}`)
+  : SITE_TITLE;
+const canonical = new URL(Astro.url.pathname, Astro.site ?? Astro.url);
+---
+<!doctype html>
+<html lang="zh-Hant" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="generator" content={Astro.generator} />
+    <meta name="theme-color" content="#000000" />
+
+    <!-- Apply saved theme BEFORE first paint, and re-apply on every view
+         transition by mutating the incoming document before swap. -->
+    <script is:inline>
+      (function () {
+        function apply(doc) {
+          try {
+            var t = localStorage.getItem('theme');
+            if (t === 'light' || t === 'dark') {
+              doc.documentElement.dataset.theme = t;
+            }
+          } catch (e) {}
+        }
+        apply(document);
+        document.addEventListener('astro:before-swap', function (e) {
+          apply(e.newDocument);
+        });
+      })();
+    </script>
+
+    <link rel="icon" type="image/svg+xml" href={withBase('/favicon.svg')} />
+    <link rel="canonical" href={canonical} />
+    <!-- Web fonts (free, SIL OFL): Inter for Latin, Noto Sans TC for Chinese,
+         JetBrains Mono for code. Apple users still get real SF Pro via the
+         `-apple-system` keyword in font-family. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap"
+    />
+    <!-- Preload the flashbang gif so the first confirm-click is instant -->
+    <link rel="preload" as="image" href={withBase('/flash-bang.gif')} />
+
+    <title>{pageTitle}</title>
+    <meta name="description" content={description} />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta name="twitter:card" content="summary" />
+
+    <ClientRouter />
+  </head>
+  <body>
+    <Header />
+    <main class={`container${wide ? ' container--wide' : ''}`}>
+      <slot />
+    </main>
+    <Footer />
+    <SearchModal />
+    <ThemeOverlay />
+
+    <button id="back-to-top" class="back-to-top" type="button" aria-label="回到頂部">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <polyline points="6 14 12 8 18 14" />
+      </svg>
+    </button>
+
+    <script>
+      // ---------- Scroll reveal ----------
+      const setupReveal = () => {
+        const elements = document.querySelectorAll<HTMLElement>('[data-reveal]');
+        if (elements.length === 0) return;
+
+        const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (reduced) {
+          elements.forEach((el) => el.classList.add('is-visible'));
+          return;
+        }
+
+        const io = new IntersectionObserver(
+          (entries) => {
+            for (const entry of entries) {
+              if (entry.isIntersecting) {
+                entry.target.classList.add('is-visible');
+                io.unobserve(entry.target);
+              }
+            }
+          },
+          // threshold 0 — reveal as soon as ANY part enters; a percentage
+          // threshold can never be met by elements taller than the viewport.
+          { threshold: 0, rootMargin: '0px 0px -8% 0px' }
+        );
+        elements.forEach((el) => io.observe(el));
+      };
+
+      // ---------- Theme controller ----------
+      const THEME_KEY = 'theme';
+      const root = document.documentElement;
+
+      const applyTheme = (theme: 'dark' | 'light', origin?: { x: number; y: number }) => {
+        const apply = () => {
+          root.dataset.theme = theme;
+          try { localStorage.setItem(THEME_KEY, theme); } catch {}
+        };
+
+        const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        // @ts-ignore - startViewTransition is experimental
+        const startVT = (document as any).startViewTransition?.bind(document);
+
+        if (!reduced && startVT) {
+          if (origin) {
+            root.style.setProperty('--vt-origin-x', origin.x + 'px');
+            root.style.setProperty('--vt-origin-y', origin.y + 'px');
+          } else {
+            root.style.setProperty('--vt-origin-x', '50vw');
+            root.style.setProperty('--vt-origin-y', '50vh');
+          }
+          // Circular wipe — used only by the flashbang fallback path.
+          root.classList.add('theme-wipe');
+          const transition = startVT(apply);
+          transition.finished.finally(() => root.classList.remove('theme-wipe'));
+        } else {
+          apply();
+        }
+      };
+
+      const setupTheme = () => {
+        const toggle = document.getElementById('theme-toggle');
+        const overlay = document.getElementById('theme-overlay');
+        if (!toggle || !overlay) return;
+
+        // The toggle lives inside a `transition:persist` header — it
+        // survives navigation, and so do its event listeners. Without
+        // this guard, every astro:page-load would stack another click
+        // handler, so a single click on the toggle in light mode would
+        // fire N handlers: handler #1 swaps light → dark, handler #2
+        // (and onwards) reads the new dark state and pops open the
+        // confirmation overlay. The overlay/flashbang/blackout are
+        // now also persistent, so closures over them stay valid.
+        if ((toggle as any).__themeSetup) return;
+        (toggle as any).__themeSetup = true;
+
+        const confirmBtn = overlay.querySelector<HTMLButtonElement>('[data-confirm]');
+        const cancelBtn = overlay.querySelector<HTMLButtonElement>('[data-cancel]');
+
+        let toggleOrigin: { x: number; y: number } | null = null;
+
+        const restartAnimations = () => {
+          // Force CSS animations to restart by toggling .is-open with reflow.
+          overlay.classList.remove('is-open');
+          void overlay.offsetWidth;
+          overlay.classList.add('is-open');
+        };
+
+        const openOverlay = () => {
+          overlay.setAttribute('aria-hidden', 'false');
+          restartAnimations();
+          // Focus cancel so ESC / Enter behave intuitively.
+          window.setTimeout(() => (cancelBtn ?? confirmBtn ?? overlay).focus(), 50);
+        };
+
+        const closeOverlay = () => {
+          overlay.classList.remove('is-open');
+          overlay.setAttribute('aria-hidden', 'true');
+        };
+
+        toggle.addEventListener('click', () => {
+          const current = root.dataset.theme === 'light' ? 'light' : 'dark';
+          const rect = toggle.getBoundingClientRect();
+          toggleOrigin = {
+            x: rect.left + rect.width / 2,
+            y: rect.top + rect.height / 2,
+          };
+          if (current === 'dark') {
+            openOverlay();              // dark → light: EVA overlay + flashbang
+          } else {
+            // light → dark: plain switch; the body's CSS colour transition
+            // gives a simple smooth fade.
+            root.dataset.theme = 'dark';
+            try { localStorage.setItem(THEME_KEY, 'dark'); } catch {}
+          }
+        });
+
+        // Tune this to match your flash-bang.gif length (visible play time
+        // before we cut to white). Roughly: explosion gif ~1.5-2.5s.
+        const FLASHBANG_DURATION = 1800;
+
+        const runFlashbangToLight = () => {
+          const flashbang = document.getElementById('flashbang');
+          const blackout = document.getElementById('theme-blackout');
+          const gif = flashbang?.querySelector<HTMLImageElement>('.flashbang__gif');
+          const gifSrc = gif?.dataset.gifSrc;
+          const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+          if (!flashbang || !gif || !gifSrc || reduced) {
+            blackout?.classList.remove('is-active');
+            applyTheme('light', toggleOrigin ?? undefined);
+            return;
+          }
+
+          flashbang.classList.add('is-active');
+          // Start gif from frame 1 by assigning src for the first time this cycle
+          gif.src = gifSrc;
+
+          // Phase 1: gif plays; EVA overlay fades out onto the blackout
+          window.setTimeout(() => {
+            // Phase 2: screen turns white (320ms fade-in)
+            flashbang.classList.add('is-whiteout');
+
+            // Phase 3: only AFTER white is fully opaque, drop the blackout and
+            // swap theme — removing it earlier would briefly show the old page
+            window.setTimeout(() => {
+              blackout?.classList.remove('is-active');
+              root.dataset.theme = 'light';
+              try { localStorage.setItem(THEME_KEY, 'light'); } catch {}
+
+              // Phase 4: fade flashbang away → reveals light site
+              window.setTimeout(() => {
+                flashbang.classList.add('is-fading');
+
+                window.setTimeout(() => {
+                  flashbang.classList.remove('is-active', 'is-whiteout', 'is-fading');
+                  gif.removeAttribute('src');
+                }, 1600);
+              }, 250);
+            }, 340);
+          }, FLASHBANG_DURATION);
+        };
+
+        confirmBtn?.addEventListener('click', () => {
+          // Instant solid-black backdrop so the overlay fades out onto black,
+          // never revealing the site underneath.
+          document.getElementById('theme-blackout')?.classList.add('is-active');
+          // Slow 800ms fade of the EVA overlay (onto the blackout).
+          overlay.classList.add('is-confirming-out');
+          runFlashbangToLight();
+          window.setTimeout(() => {
+            overlay.classList.remove('is-open', 'is-confirming-out');
+            overlay.setAttribute('aria-hidden', 'true');
+          }, 900);
+        });
+
+        cancelBtn?.addEventListener('click', closeOverlay);
+
+        overlay.addEventListener('click', (e) => {
+          if (e.target === overlay) closeOverlay();
+        });
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape' && overlay.classList.contains('is-open')) closeOverlay();
+        });
+      };
+
+      // ---------- Search ----------
+      const escapeHtml = (s: string) =>
+        s.replace(/[&<>"']/g, (c) =>
+          ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!)
+        );
+
+      // Escape `text`, wrapping every case-insensitive occurrence of `q` in <mark>.
+      const highlightMatch = (text: string, q: string): string => {
+        if (!q) return escapeHtml(text);
+        const lower = text.toLowerCase();
+        const ql = q.toLowerCase();
+        let out = '';
+        let i = 0;
+        while (i < text.length) {
+          const idx = lower.indexOf(ql, i);
+          if (idx === -1) { out += escapeHtml(text.slice(i)); break; }
+          out += escapeHtml(text.slice(i, idx));
+          out += '<mark class="search-hl">' + escapeHtml(text.slice(idx, idx + q.length)) + '</mark>';
+          i = idx + q.length;
+        }
+        return out;
+      };
+
+      const setupSearch = () => {
+        const modal = document.getElementById('search-modal') as HTMLElement | null;
+        const trigger = document.getElementById('search-trigger');
+        const input = document.getElementById('search-input') as HTMLInputElement | null;
+        const results = document.getElementById('search-results');
+        if (!modal || !trigger || !input || !results) return;
+
+        const indexUrl = modal.dataset.indexUrl!;
+        const baseUrl = modal.dataset.baseUrl!;
+        const catSec = modal.querySelector<HTMLElement>('[data-search-sec="category"]');
+        const tagSec = modal.querySelector<HTMLElement>('[data-search-sec="tag"]');
+        const postSec = modal.querySelector<HTMLElement>('[data-search-sec="post"]');
+        const noresult = modal.querySelector<HTMLElement>('[data-search-noresult]');
+        const catChips = Array.from(catSec?.querySelectorAll<HTMLElement>('.search-browse__chip') ?? []);
+        const tagChips = Array.from(tagSec?.querySelectorAll<HTMLElement>('.search-browse__chip') ?? []);
+
+        let cache: Array<{
+          id: string; title: string; description: string;
+          category: string; tags: string[]; pubDate: string;
+        }> | null = null;
+        let active = -1;
+        let current: typeof cache = [];
+
+        const loadIndex = async () => {
+          if (cache) return;
+          try {
+            const res = await fetch(indexUrl);
+            cache = await res.json();
+          } catch { cache = []; }
+        };
+
+        const search = (q: string) => {
+          if (!cache || !q) return [];
+          return cache.filter((p) =>
+            p.title.toLowerCase().includes(q) ||
+            p.description.toLowerCase().includes(q) ||
+            p.category.toLowerCase().includes(q) ||
+            p.tags.some((t) => t.toLowerCase().includes(q))
+          ).slice(0, 20);
+        };
+
+        const renderResults = () => {
+          if (!current) { results.innerHTML = ''; return; }
+          const q = input.value.trim();
+          results.innerHTML = current.map((p, i) => {
+            const date = p.pubDate.slice(0, 10);
+            const meta = [
+              p.category ? `<span class="search-result__cat">${highlightMatch(p.category, q)}</span>` : '',
+              `<time>${date}</time>`,
+              ...p.tags.map((t) => `<span>#${highlightMatch(t, q)}</span>`),
+            ].filter(Boolean).join('<span aria-hidden="true">·</span>');
+            return `
+              <li>
+                <a class="search-result${i === active ? ' is-active' : ''}"
+                   href="${baseUrl}posts/${encodeURIComponent(p.id)}/"
+                   data-idx="${i}">
+                  <div class="search-result__meta">${meta}</div>
+                  <h3 class="search-result__title">${highlightMatch(p.title, q)}</h3>
+                  ${p.description ? `<p class="search-result__desc">${highlightMatch(p.description, q)}</p>` : ''}
+                </a>
+              </li>`;
+          }).join('');
+        };
+
+        const render = () => {
+          const q = input.value.trim().toLowerCase();
+
+          // Filter category + tag chips by name; hide a section when empty
+          let catVisible = 0;
+          for (const chip of catChips) {
+            const match = !q || (chip.dataset.name ?? '').toLowerCase().includes(q);
+            chip.hidden = !match;
+            if (match) catVisible++;
+          }
+          let tagVisible = 0;
+          for (const chip of tagChips) {
+            const match = !q || (chip.dataset.name ?? '').toLowerCase().includes(q);
+            chip.hidden = !match;
+            if (match) tagVisible++;
+          }
+          if (catSec) catSec.hidden = catVisible === 0;
+          if (tagSec) tagSec.hidden = tagVisible === 0;
+
+          // Matching articles — only while typing
+          current = q ? search(q) : [];
+          active = current.length > 0 ? 0 : -1;
+          renderResults();
+          if (postSec) postSec.hidden = !q || current.length === 0;
+
+          if (noresult) {
+            noresult.hidden = !(q && catVisible === 0 && tagVisible === 0 && current.length === 0);
+          }
+        };
+
+        const open = async () => {
+          modal.classList.add('is-open');
+          modal.setAttribute('aria-hidden', 'false');
+          window.setTimeout(() => input.focus(), 60);
+          await loadIndex();
+          render();
+        };
+
+        const close = () => {
+          modal.classList.remove('is-open');
+          modal.setAttribute('aria-hidden', 'true');
+          input.value = '';
+          current = [];
+          active = -1;
+          render();
+        };
+
+        let debounce = 0;
+        input.addEventListener('input', () => {
+          window.clearTimeout(debounce);
+          debounce = window.setTimeout(render, 80);
+        });
+
+        input.addEventListener('keydown', (e) => {
+          if (!current) return;
+          if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (current.length === 0) return;
+            active = (active + 1) % current.length;
+            renderResults();
+          } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (current.length === 0) return;
+            active = (active - 1 + current.length) % current.length;
+            renderResults();
+          } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (active >= 0 && current[active]) {
+              window.location.href = `${baseUrl}posts/${encodeURIComponent(current[active].id)}/`;
+            }
+          } else if (e.key === 'Escape') {
+            close();
+          }
+        });
+
+        trigger.addEventListener('click', () => { open(); });
+        modal.querySelector<HTMLElement>('[data-close]')?.addEventListener('click', close);
+
+        document.addEventListener('keydown', (e) => {
+          const opened = modal.classList.contains('is-open');
+          if (opened && e.key === 'Escape') { close(); return; }
+          if (opened) return;
+          const t = e.target as HTMLElement | null;
+          if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+          if (e.key === '/' || (e.key.toLowerCase() === 'k' && (e.metaKey || e.ctrlKey))) {
+            e.preventDefault();
+            open();
+          }
+        });
+      };
+
+      // ---------- Nav dropdowns (categories / tags / mobile "more") ----------
+      const setupNavDropdowns = () => {
+        const dropdowns = Array.from(
+          document.querySelectorAll<HTMLElement>('[data-nav-dropdown]')
+        );
+        if (dropdowns.length === 0) return;
+
+        const closeAll = (except?: HTMLElement) => {
+          for (const d of dropdowns) {
+            if (d === except) continue;
+            const btn = d.querySelector<HTMLElement>('button');
+            d.classList.remove('is-open');
+            btn?.setAttribute('aria-expanded', 'false');
+          }
+        };
+
+        for (const d of dropdowns) {
+          const btn = d.querySelector<HTMLButtonElement>('button');
+          if (!btn) continue;
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const wasOpen = d.classList.contains('is-open');
+            closeAll();
+            if (!wasOpen) {
+              d.classList.add('is-open');
+              btn.setAttribute('aria-expanded', 'true');
+            }
+          });
+        }
+
+        document.addEventListener('click', (e) => {
+          const target = e.target as Element | null;
+          if (!target) return;
+          if (!dropdowns.some((d) => d.contains(target))) closeAll();
+        });
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape') closeAll();
+        });
+      };
+
+      // ---------- Measure the sticky header height so the pinned filter
+      // bar can sit flush below it. Re-measure on resize.
+      const measureHeader = () => {
+        const header = document.querySelector<HTMLElement>('.site-header');
+        if (!header) return;
+        const h = header.getBoundingClientRect().height;
+        document.documentElement.style.setProperty('--header-h', `${h}px`);
+      };
+
+      // ---------- Post filter (category single-select + tags multi-select) ----------
+      const setupFilter = () => {
+        const root = document.querySelector<HTMLElement>('[data-filter]');
+        const grid = document.querySelector<HTMLElement>('[data-posts-grid]');
+        if (!grid) return;
+
+        const emptyMsg = document.querySelector<HTMLElement>('[data-filter-empty]');
+        const catGroup = root?.querySelector<HTMLElement>('[data-filter-group="category"]') ?? null;
+        const yearGroup = root?.querySelector<HTMLElement>('[data-filter-group="year"]') ?? null;
+        const tagGroup = root?.querySelector<HTMLElement>('[data-filter-group="tag"]') ?? null;
+        const cards = Array.from(grid.querySelectorAll<HTMLElement>('.post-row'));
+
+        const pinnedBar = document.querySelector<HTMLElement>('[data-filter-pinned]');
+        const pinnedChips = pinnedBar?.querySelector<HTMLElement>('[data-filter-pinned-chips]') ?? null;
+        const pinnedClear = pinnedBar?.querySelector<HTMLButtonElement>('[data-filter-pinned-clear]') ?? null;
+
+        // Cache the original DOM order of tag chips so the pinned bar
+        // can list selected tags in document order, not selection order.
+        const originalTagOrder: string[] = Array.from(
+          tagGroup?.querySelectorAll<HTMLElement>('.filter-chip') ?? []
+        )
+          .map((el) => el.dataset.filterValue ?? '')
+          .filter((v) => v !== '');
+
+        let selectedCat = '';
+        let selectedYear = '';
+        let selectedTags = new Set<string>();
+
+        // Initial state from URL params
+        const params = new URLSearchParams(window.location.search);
+        selectedCat = params.get('cat') ?? '';
+        selectedYear = params.get('year') ?? '';
+        const tagParam = params.get('tags');
+        if (tagParam) selectedTags = new Set(tagParam.split(',').filter(Boolean));
+
+        const parseList = (raw: string | undefined): string[] => {
+          if (!raw) return [];
+          try { return JSON.parse(raw); } catch { return []; }
+        };
+
+        // Snapshot every post's facets once — drives the cross-filtering
+        const postData = cards.map((card) => ({
+          category: card.dataset.category ?? '',
+          year: card.dataset.year ?? '',
+          tags: parseList(card.dataset.tags),
+        }));
+
+        const updateURL = () => {
+          const u = new URL(window.location.href);
+          if (selectedCat) u.searchParams.set('cat', selectedCat);
+          else u.searchParams.delete('cat');
+          if (selectedYear) u.searchParams.set('year', selectedYear);
+          else u.searchParams.delete('year');
+          if (selectedTags.size > 0) u.searchParams.set('tags', Array.from(selectedTags).join(','));
+          else u.searchParams.delete('tags');
+          // Keep the existing history state — passing null would clobber the
+          // ClientRouter's state and break the browser Back button.
+          history.replaceState(history.state, '', u.toString());
+        };
+
+        type Facets = { category: string; year: string; tags: string[] };
+        const matchCat = (p: Facets) => selectedCat === '' || p.category === selectedCat;
+        const matchYear = (p: Facets) => selectedYear === '' || p.year === selectedYear;
+        const matchTags = (p: Facets) =>
+          selectedTags.size === 0 || Array.from(selectedTags).every((t) => p.tags.includes(t));
+
+        // Render-count guard: the first call is hydration (URL → state),
+        // which shouldn't animate (we'd be transitioning from a fictional
+        // "all visible" snapshot into the URL-filtered state and the page
+        // is also still fading in). Subsequent calls are user-driven.
+        let renderCount = 0;
+
+        const render = () => {
+          // Cross-filter counts: for each group, count how many posts
+          // would still match if the user picked this chip's value
+          // (i.e. count under the OTHER two groups' current selections).
+          // The total-count displayed on each chip is then a live,
+          // honest number: "if I click this, this many posts will show".
+          // A chip with 0 here is hidden unless it's the currently-
+          // selected one (so the user can always unselect to broaden).
+          const catCounts = new Map<string, number>();
+          const yearCounts = new Map<string, number>();
+          const tagCounts = new Map<string, number>();
+          for (const p of postData) {
+            if (matchYear(p) && matchTags(p) && p.category) {
+              catCounts.set(p.category, (catCounts.get(p.category) ?? 0) + 1);
+            }
+            if (matchCat(p) && matchTags(p) && p.year) {
+              yearCounts.set(p.year, (yearCounts.get(p.year) ?? 0) + 1);
+            }
+            if (matchCat(p) && matchYear(p)) {
+              for (const t of p.tags) {
+                tagCounts.set(t, (tagCounts.get(t) ?? 0) + 1);
+              }
+            }
+          }
+
+          const applyChips = (
+            group: HTMLElement | null,
+            counts: Map<string, number>,
+            isSelected: (v: string) => boolean,
+            allActive: boolean,
+          ) => {
+            group?.querySelectorAll<HTMLElement>('.filter-chip').forEach((chip) => {
+              const val = chip.dataset.filterValue ?? '';
+              if (val === '') {
+                chip.classList.toggle('is-active', allActive);
+                return;
+              }
+              const count = counts.get(val) ?? 0;
+              const sel = isSelected(val);
+              chip.hidden = count === 0 && !sel;
+              chip.classList.toggle('is-active', sel);
+              const countEl = chip.querySelector<HTMLElement>('.filter-chip__count');
+              if (countEl) countEl.textContent = String(count);
+            });
+          };
+
+          applyChips(catGroup,  catCounts,  (v) => v === selectedCat,    selectedCat === '');
+          applyChips(yearGroup, yearCounts, (v) => v === selectedYear,   selectedYear === '');
+          applyChips(tagGroup,  tagCounts,  (v) => selectedTags.has(v),  selectedTags.size === 0);
+
+          // Compute new card visibility and apply it. User-driven renders
+          // animate a simple opacity crossfade per row — much lighter than
+          // wrapping the layout in a view-transition (which captured the
+          // entire viewport and FLIP-ed every card on every chip toggle).
+          const newVisible = postData.map((p) => matchCat(p) && matchYear(p) && matchTags(p));
+          let shown = newVisible.filter((v) => v).length;
+
+          const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+          const shouldAnimate = renderCount > 0 && !reduced;
+
+          if (shouldAnimate) {
+            for (let i = 0; i < cards.length; i++) {
+              const card = cards[i];
+              const wasVisible = !card.hidden;
+              const willBeVisible = newVisible[i];
+              if (wasVisible && !willBeVisible) {
+                // Leaving: fade out, then drop from layout.
+                card.classList.add('is-filter-out');
+                window.setTimeout(() => {
+                  card.hidden = true;
+                  card.classList.remove('is-filter-out');
+                }, 220);
+              } else if (!wasVisible && willBeVisible) {
+                // Entering: insert at opacity 0, then transition in.
+                card.hidden = false;
+                card.classList.add('is-filter-in');
+                requestAnimationFrame(() => requestAnimationFrame(() => {
+                  card.classList.remove('is-filter-in');
+                }));
+              }
+            }
+          } else {
+            for (let i = 0; i < cards.length; i++) cards[i].hidden = !newVisible[i];
+          }
+          if (emptyMsg) emptyMsg.hidden = shown > 0;
+
+          renderCount++;
+          renderPinnedBar();
+          updateURL();
+        };
+
+        type PinItem = { kind: 'year' | 'cat' | 'tag'; value: string; label: string };
+
+        const computePinItems = (): PinItem[] => {
+          const out: PinItem[] = [];
+          // Order follows the document: year → category → tags-in-DOM-order
+          if (selectedYear) out.push({ kind: 'year', value: selectedYear, label: selectedYear });
+          if (selectedCat) out.push({ kind: 'cat', value: selectedCat, label: selectedCat });
+          for (const t of originalTagOrder) {
+            if (selectedTags.has(t)) out.push({ kind: 'tag', value: t, label: '#' + t });
+          }
+          return out;
+        };
+
+        const findSourceChip = (kind: string, value: string): HTMLElement | null => {
+          const groupKey = kind === 'cat' ? 'category' : kind;
+          const grp = document.querySelector<HTMLElement>(`[data-filter-group="${groupKey}"]`);
+          if (!grp) return null;
+          return Array.from(grp.querySelectorAll<HTMLElement>('.filter-chip'))
+            .find((c) => c.dataset.filterValue === value) ?? null;
+        };
+
+        // Rebuild the chip list inside the pinned bar. Used in two modes:
+        //  - 'silent': replace contents instantly (no per-chip animation).
+        //    Used right before/after a view-transition or during hydration.
+        //  - 'diff': keep unchanged chips in place; new chips grow in,
+        //    removed chips collapse out. Used for filter changes while
+        //    the bar's overall state (active/inactive) doesn't change.
+        const syncPinnedChips = (items: PinItem[], mode: 'silent' | 'diff') => {
+          if (!pinnedChips) return;
+          if (mode === 'silent') {
+            pinnedChips.innerHTML = '';
+            for (const it of items) {
+              const chip = makePinnedChip(it);
+              pinnedChips.appendChild(chip);
+            }
+            return;
+          }
+          // diff mode
+          const keyOf = (k: string, v: string) => `${k}::${v}`;
+          const wanted = new Map<string, PinItem>();
+          for (const it of items) wanted.set(keyOf(it.kind, it.value), it);
+
+          // Out: chips no longer wanted. After the chip is gone from the
+          // DOM the bar layout reflows, which shifts the remaining chips'
+          // natural slots — so we re-run the scroll positioner once the
+          // exit animation has finished.
+          pinnedChips.querySelectorAll<HTMLElement>('.filter-pinned__chip').forEach((chip) => {
+            const k = keyOf(chip.dataset.kind ?? '', chip.dataset.value ?? '');
+            if (wanted.has(k) || chip.classList.contains('is-leaving')) return;
+            chip.classList.add('is-leaving');
+            window.setTimeout(() => {
+              chip.remove();
+              updatePinnedScroll();
+            }, 280);
+          });
+
+          // In: chips not yet present. Insert in `items` order so the
+          // visible sequence matches the original document order even
+          // after diffs.
+          const present = new Set<string>();
+          pinnedChips.querySelectorAll<HTMLElement>('.filter-pinned__chip').forEach((chip) => {
+            if (chip.classList.contains('is-leaving')) return;
+            present.add(keyOf(chip.dataset.kind ?? '', chip.dataset.value ?? ''));
+          });
+          // Re-sort existing chips into the target order, then insert missing.
+          const liveChips = Array.from(
+            pinnedChips.querySelectorAll<HTMLElement>('.filter-pinned__chip:not(.is-leaving)')
+          );
+          const liveByKey = new Map<string, HTMLElement>();
+          for (const c of liveChips) liveByKey.set(keyOf(c.dataset.kind ?? '', c.dataset.value ?? ''), c);
+
+          for (const it of items) {
+            const k = keyOf(it.kind, it.value);
+            let chip = liveByKey.get(k) ?? null;
+            if (!chip) {
+              chip = makePinnedChip(it, /* entering */ true);
+              pinnedChips.appendChild(chip);
+              requestAnimationFrame(() => requestAnimationFrame(() => {
+                chip!.classList.remove('is-entering');
+              }));
+            } else {
+              // Move into correct position
+              pinnedChips.appendChild(chip);
+            }
+          }
+        };
+
+        const makePinnedChip = (it: PinItem, entering = false): HTMLButtonElement => {
+          const chip = document.createElement('button');
+          chip.type = 'button';
+          chip.className = 'filter-pinned__chip' + (entering ? ' is-entering' : '');
+          chip.dataset.kind = it.kind;
+          chip.dataset.value = it.value;
+          chip.setAttribute('aria-label', `移除過濾條件 ${it.label}`);
+          const lbl = document.createElement('span');
+          lbl.textContent = it.label;
+          const x = document.createElement('span');
+          x.className = 'filter-pinned__x';
+          x.setAttribute('aria-hidden', 'true');
+          x.textContent = '×';
+          chip.appendChild(lbl);
+          chip.appendChild(x);
+          return chip;
+        };
+
+        // ---------- Scroll-driven pinned bar ----------
+        //
+        // The pinned bar is no longer a discrete state ("hidden" vs "active")
+        // that toggles when the user crosses a threshold. Instead it's a
+        // continuous, scroll-driven morph:
+        //
+        //   progress = 0     filter section fully visible below the header
+        //   progress = 1     filter section fully scrolled under the header
+        //
+        // Each selected chip's pinned-bar duplicate is positioned via JS
+        // transform so that at progress=0 it sits exactly on top of its
+        // source chip in the filter row, and at progress=1 it sits at its
+        // natural slot in the pinned bar. Intermediate values interpolate
+        // continuously — so as the user scrolls, the chip glides upward
+        // and lands at the pinned position before the filter is gone.
+        //
+        // CSS handles all opacity fades via the --pinned-progress custom
+        // property, so labels and unselected chips fade out, the pinned
+        // chip fades in, and the bar background fades in — all in lockstep
+        // with the same progress value.
+
+        let lastItemsKey = '';
+        const refreshPinned = () => {
+          if (!pinnedBar) return;
+          const items = computePinItems();
+          const hasFilters = items.length > 0;
+          pinnedBar.dataset.hasFilters = hasFilters ? '1' : '0';
+
+          const itemsKey = items.map((it) => `${it.kind}::${it.value}`).join('|');
+          const itemsChanged = itemsKey !== lastItemsKey;
+          lastItemsKey = itemsKey;
+
+          if (itemsChanged) {
+            // Diff if the user can currently see the bar (so removals
+            // animate); silent otherwise (cheaper, no visible flicker
+            // since the bar is faded out).
+            const interactive = pinnedBar.classList.contains('is-active');
+            syncPinnedChips(items, interactive ? 'diff' : 'silent');
+          }
+
+          updatePinnedScroll();
+        };
+
+        const updatePinnedScroll = () => {
+          if (!pinnedBar || !pinnedChips) return;
+
+          const headerH = parseFloat(
+            getComputedStyle(document.documentElement).getPropertyValue('--header-h')
+          ) || 58;
+
+          // Progress: 0 when filter.top is at the header bottom; 1 when
+          // filter has fully scrolled past the header. Outside this range
+          // we clamp. If there's no filter section (e.g. no posts) or no
+          // selected filters, progress stays 0.
+          let progress = 0;
+          const hasFilters = pinnedBar.dataset.hasFilters === '1';
+          if (hasFilters && root) {
+            const filterRect = root.getBoundingClientRect();
+            if (filterRect.height > 0) {
+              progress = (headerH - filterRect.top) / filterRect.height;
+              progress = Math.max(0, Math.min(1, progress));
+            }
+          }
+
+          document.documentElement.style.setProperty('--pinned-progress', String(progress));
+
+          // Position each pinned chip via transform, interpolating between
+          // its source's current viewport position and its own natural
+          // slot in the bar. Clamp Y so the chip never travels above its
+          // pinned slot — once the source has scrolled past, the chip
+          // locks in place. Reads and writes are batched into separate
+          // phases so we trigger at most one layout per scroll event.
+          const pinnedChipEls = pinnedChips.querySelectorAll<HTMLElement>(
+            '.filter-pinned__chip:not(.is-leaving)'
+          );
+
+          // Phase 1 (writes): clear every chip's transform so phase 2
+          // measurements return the natural (slot) position.
+          type Meas = { pchip: HTMLElement; source: HTMLElement };
+          const pending: Meas[] = [];
+          pinnedChipEls.forEach((pchip) => {
+            pchip.style.transform = '';
+            if (!hasFilters) return;
+            const kind = pchip.dataset.kind ?? '';
+            const value = pchip.dataset.value ?? '';
+            const source = findSourceChip(kind, value);
+            if (!source) return;
+            pending.push({ pchip, source });
+          });
+
+          // Phase 2 (reads): one layout pass for every chip + source rect.
+          const measured = pending.map(({ pchip, source }) => ({
+            pchip,
+            pinnedNat: pchip.getBoundingClientRect(),
+            sourceRect: source.getBoundingClientRect(),
+          }));
+
+          // Phase 3 (writes): apply interpolated transforms. Rounded
+          // to integer pixels — sub-pixel translate values make text
+          // (inside the chip and on the page behind it) render at
+          // fractional positions, which reads as blur or jitter during
+          // scroll. Rounding is imperceptible at scroll speed but
+          // keeps text crisp.
+          measured.forEach(({ pchip, pinnedNat, sourceRect }) => {
+            const renderedX = sourceRect.left * (1 - progress) + pinnedNat.left * progress;
+            let renderedY = sourceRect.top * (1 - progress) + pinnedNat.top * progress;
+            renderedY = Math.max(renderedY, pinnedNat.top);
+            const tx = Math.round(renderedX - pinnedNat.left);
+            const ty = Math.round(renderedY - pinnedNat.top);
+            if (Math.abs(tx) > 0 || Math.abs(ty) > 0) {
+              pchip.style.transform = `translate(${tx}px, ${ty}px)`;
+            }
+          });
+
+          // Enable pointer-events on the bar once it's substantially
+          // settled (otherwise users could click ghostly half-faded chips
+          // mid-scroll). Also disable clicks on the fading filter row.
+          pinnedBar.classList.toggle('is-active', progress > 0.6 && hasFilters);
+          root?.classList.toggle('chips-fading', progress > 0.04);
+        };
+
+        // Public-style aliases so the rest of the code reads naturally.
+        const renderPinnedBar = refreshPinned;
+        const updatePinnedVisibility = updatePinnedScroll;
+
+        pinnedChips?.addEventListener('click', (e) => {
+          const btn = (e.target as HTMLElement).closest<HTMLElement>('.filter-pinned__chip');
+          if (!btn) return;
+          const kind = btn.dataset.kind;
+          const val = btn.dataset.value ?? '';
+          if (kind === 'year') selectedYear = '';
+          else if (kind === 'cat') selectedCat = '';
+          else if (kind === 'tag') selectedTags.delete(val);
+          render();
+        });
+        pinnedClear?.addEventListener('click', () => {
+          selectedCat = '';
+          selectedYear = '';
+          selectedTags.clear();
+          render();
+        });
+
+        // Per-page closure for scroll/resize. Replace any previous listener
+        // to avoid stale closures from earlier page-loads firing.
+        const w = window as any;
+        if (w.__pinnedScroll) {
+          document.removeEventListener('scroll', w.__pinnedScroll);
+          window.removeEventListener('resize', w.__pinnedScroll);
+        }
+        w.__pinnedScroll = updatePinnedVisibility;
+        document.addEventListener('scroll', updatePinnedVisibility, { passive: true });
+        window.addEventListener('resize', updatePinnedVisibility);
+
+        catGroup?.addEventListener('click', (e) => {
+          const btn = (e.target as HTMLElement).closest<HTMLElement>('.filter-chip');
+          if (!btn) return;
+          const val = btn.dataset.filterValue ?? '';
+          selectedCat = val === selectedCat ? '' : val;
+          render();
+        });
+
+        yearGroup?.addEventListener('click', (e) => {
+          const btn = (e.target as HTMLElement).closest<HTMLElement>('.filter-chip');
+          if (!btn) return;
+          const val = btn.dataset.filterValue ?? '';
+          selectedYear = val === selectedYear ? '' : val;
+          render();
+        });
+
+        tagGroup?.addEventListener('click', (e) => {
+          const btn = (e.target as HTMLElement).closest<HTMLElement>('.filter-chip');
+          if (!btn) return;
+          const val = btn.dataset.filterValue ?? '';
+          if (val === '') {
+            selectedTags.clear();
+          } else if (selectedTags.has(val)) {
+            selectedTags.delete(val);
+          } else {
+            selectedTags.add(val);
+          }
+          render();
+        });
+
+        render();
+      };
+
+      // ---------- Back to top ----------
+      const setupBackToTop = () => {
+        const btn = document.getElementById('back-to-top');
+        if (!btn) return;
+        const onScroll = () => {
+          btn.classList.toggle('is-visible', window.scrollY > 400);
+        };
+        document.addEventListener('scroll', onScroll, { passive: true });
+        onScroll();
+        btn.addEventListener('click', () => {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+      };
+
+      // ---------- Return-from-post: only when the user presses the browser
+      // back button WHILE on a post page. Other navigations (e.g. About →
+      // 文章) must not trigger the scroll/highlight.
+      const FLAG_KEY = 'returnFromPostId';
+
+      const captureBackFromPost = () => {
+        const w = window as any;
+        if (w.__backFromPostAttached) return;
+        w.__backFromPostAttached = true;
+        // ClientRouter back/forward navigation
+        document.addEventListener('astro:before-preparation', (e: any) => {
+          if (e?.navigationType !== 'traverse' || e?.direction !== 'back') return;
+          const fromPath: string | undefined = e?.from?.pathname;
+          if (!fromPath) return;
+          const m = fromPath.match(/\/posts\/([^/?#]+)/);
+          if (m) {
+            try { sessionStorage.setItem(FLAG_KEY, m[1]); } catch {}
+          }
+        });
+      };
+
+      // Hard navigation back (no ClientRouter event) — check the perf API
+      // once on initial cold load. bfcache pages won't run this, but the
+      // ClientRouter listener above already covers in-app back nav.
+      const captureHardBack = () => {
+        try {
+          const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
+          if (nav?.type !== 'back_forward') return;
+          if (!document.referrer) return;
+          const u = new URL(document.referrer);
+          const m = u.pathname.match(/\/posts\/([^/?#]+)/);
+          if (m) sessionStorage.setItem(FLAG_KEY, m[1]);
+        } catch {}
+      };
+
+      const setupReturnFromPost = () => {
+        const grid = document.querySelector<HTMLElement>('[data-posts-grid]');
+        if (!grid) return;
+        let lastId: string | null = null;
+        try { lastId = sessionStorage.getItem(FLAG_KEY); } catch {}
+        if (!lastId) return;
+        try { sessionStorage.removeItem(FLAG_KEY); } catch {}
+
+        window.setTimeout(() => {
+          const rows = Array.from(grid.querySelectorAll<HTMLElement>('.post-row'));
+          const target = rows.find((r) => {
+            const a = r.querySelector<HTMLAnchorElement>('.post-row__title a');
+            return (a?.getAttribute('href') ?? '').includes(`/posts/${lastId}/`);
+          });
+          if (!target || target.hidden) return;
+          target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          target.classList.add('is-returning');
+          window.setTimeout(() => target.classList.remove('is-returning'), 2400);
+        }, 60);
+      };
+
+      captureHardBack();
+
+      const w = window as any;
+      if (!w.__headerResizeAttached) {
+        w.__headerResizeAttached = true;
+        window.addEventListener('resize', measureHeader);
+      }
+
+      // Reset per-page scroll-progress CSS variables BEFORE the view
+      // transition captures the new snapshot. Otherwise a stale value
+      // (e.g. left at 0.7 after the user scrolled the filter on /,
+      // then visited /about, then came back) makes the pinned bar /
+      // about-card flash visible during the transition before the
+      // page-load handler resets it to 0.
+      //
+      // astro:before-swap fires inside the view-transition callback,
+      // after OLD snapshot but before NEW snapshot — exactly the
+      // window we need.
+      if (!w.__pageProgressResetAttached) {
+        w.__pageProgressResetAttached = true;
+        document.addEventListener('astro:before-swap', () => {
+          const s = document.documentElement.style;
+          s.removeProperty('--pinned-progress');
+          s.removeProperty('--about-card-progress');
+          s.removeProperty('--about-bar-progress');
+          s.removeProperty('--about-bio-progress');
+          s.removeProperty('--about-work-progress');
+          s.removeProperty('--about-edu-progress');
+          s.removeProperty('--about-cert-progress');
+          s.removeProperty('--about-hitcon-progress');
+          s.removeProperty('--about-activities-progress');
+          s.removeProperty('--about-end-progress');
+        });
+      }
+
+      document.addEventListener('astro:page-load', () => {
+        measureHeader();
+        setupReveal();
+        setupTheme();
+        setupSearch();
+        setupNavDropdowns();
+        setupFilter();
+        setupBackToTop();
+        captureBackFromPost();
+        setupReturnFromPost();
+      });
+    </script>
+  </body>
+</html>

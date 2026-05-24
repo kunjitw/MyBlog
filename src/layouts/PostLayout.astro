@@ -1,0 +1,383 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import FormattedDate from '../components/FormattedDate.astro';
+import { withBase } from '../utils/url';
+import type { CollectionEntry } from 'astro:content';
+import type { MarkdownHeading } from 'astro';
+
+type Props = {
+  post: CollectionEntry<'blog'>['data'];
+  headings?: MarkdownHeading[];
+};
+const { post, headings = [] } = Astro.props;
+
+// TOC: only h2 + h3 (h1 is the page title, h4+ is too granular).
+const tocItems = headings.filter((h) => h.depth === 2 || h.depth === 3);
+
+// Sort tags alphabetically — keeps the meta strip in lockstep with
+// the home filter chips and post-row metas.
+const sortedTags = [...post.tags].sort((a, b) => a.localeCompare(b));
+---
+<BaseLayout title={post.title} description={post.description} wide>
+  <div class="reading-progress" aria-hidden="true">
+    <div class="reading-progress__bar"></div>
+  </div>
+
+  <article>
+    <header class="post-header">
+      {/* Header order matches the post list's row layout:
+            date → category → title → tags
+          so the eye finds the same metadata in the same place
+          whether browsing the index or reading an article. */}
+      <p class="post-meta post-meta--head">
+        <FormattedDate date={post.pubDate} />
+        {post.updatedDate && (
+          <>
+            <span class="sep">·</span>
+            <span>更新於 <FormattedDate date={post.updatedDate} /></span>
+          </>
+        )}
+      </p>
+      {post.category && (
+        <p class="post-header__cat">
+          <a class="post-card__cat" href={withBase(`/?cat=${encodeURIComponent(post.category)}`)}>{post.category}</a>
+        </p>
+      )}
+      <h1>{post.title}</h1>
+      {sortedTags.length > 0 && (
+        <p class="post-meta post-meta--tags">
+          {sortedTags.map((t) => (
+            <a class="tag" href={withBase(`/?tags=${encodeURIComponent(t)}`)}>#{t}</a>
+          ))}
+        </p>
+      )}
+    </header>
+
+    <div class="post-content">
+      <slot />
+    </div>
+  </article>
+
+  {tocItems.length > 0 && (
+    <>
+      {/* Desktop right-rail TOC */}
+      <aside class="post-toc" aria-label="目錄" data-post-toc>
+        <p class="post-toc__label">目錄</p>
+        <ul class="post-toc__list">
+          {tocItems.map((h) => (
+            <li class={`post-toc__item post-toc__item--h${h.depth}`}>
+              <a class="post-toc__link" href={`#${h.slug}`} data-toc-slug={h.slug}>
+                {h.text}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </aside>
+
+      {/* Mobile FAB — sits just above the back-to-top button on the
+          right edge of the viewport. Opens the bottom sheet below. */}
+      <button
+        class="toc-fab"
+        type="button"
+        aria-label="開啟目錄"
+        aria-controls="toc-sheet"
+        aria-expanded="false"
+        data-toc-fab
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="5" y1="7" x2="19" y2="7"/>
+          <line x1="5" y1="12" x2="19" y2="12"/>
+          <line x1="5" y1="17" x2="14" y2="17"/>
+        </svg>
+      </button>
+
+      {/* iOS-style bottom sheet — slides up from the bottom edge of
+          the viewport when the FAB is tapped. Lists the same TOC
+          items as the desktop side rail; clicking an item closes
+          the sheet and the browser smoothly scrolls to the heading
+          (scroll-margin-top is set on .post-content headings). */}
+      <div
+        id="toc-sheet"
+        class="toc-sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-label="目錄"
+        aria-hidden="true"
+        data-toc-sheet
+      >
+        <div class="toc-sheet__scrim" data-close></div>
+        <div class="toc-sheet__panel">
+          <div class="toc-sheet__grabber" aria-hidden="true"></div>
+          <p class="toc-sheet__label">目錄</p>
+          <ul class="toc-sheet__list">
+            {tocItems.map((h) => (
+              <li class={`toc-sheet__item toc-sheet__item--h${h.depth}`}>
+                <a class="toc-sheet__link" href={`#${h.slug}`} data-toc-slug={h.slug}>
+                  {h.text}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </>
+  )}
+
+  {/* Image lightbox — single instance, target image swapped in on click */}
+  <div class="image-lightbox" data-image-lightbox aria-hidden="true">
+    <img class="image-lightbox__img" alt="" />
+    <button class="image-lightbox__close" type="button" aria-label="關閉">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+        <path d="M6 6 L18 18 M18 6 L6 18" />
+      </svg>
+    </button>
+  </div>
+
+  <script>
+    // Reading progress bar — width % from how far the article has scrolled.
+    const setupProgress = () => {
+      const article = document.querySelector<HTMLElement>('article');
+      const bar = document.querySelector<HTMLElement>('.reading-progress__bar');
+      if (!article || !bar) return;
+
+      let ticking = false;
+      const update = () => {
+        const rect = article.getBoundingClientRect();
+        const articleStart = window.scrollY + rect.top;
+        const articleEnd = articleStart + article.offsetHeight - window.innerHeight;
+        const range = Math.max(1, articleEnd - articleStart);
+        const progress = Math.max(0, Math.min(1, (window.scrollY - articleStart) / range));
+        bar.style.setProperty('--progress', `${(progress * 100).toFixed(2)}%`);
+        ticking = false;
+      };
+      const onScroll = () => {
+        if (ticking) return;
+        ticking = true;
+        requestAnimationFrame(update);
+      };
+      document.addEventListener('scroll', onScroll, { passive: true });
+      window.addEventListener('resize', onScroll);
+      update();
+    };
+
+    // Copy button — appended to each <pre> in the article. The button
+    // fades in on hover (CSS), copies the inner <code>'s text on click,
+    // and briefly transforms into a checkmark for feedback.
+    const COPY_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
+    const CHECK_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>`;
+
+    const setupCodeCopy = () => {
+      document.querySelectorAll<HTMLElement>('.post-content pre').forEach((pre) => {
+        if (pre.dataset.copyInit === '1') return;
+        pre.dataset.copyInit = '1';
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'code-copy';
+        btn.setAttribute('aria-label', '複製程式碼');
+        btn.innerHTML = COPY_ICON;
+        pre.appendChild(btn);
+
+        let resetTimer: number | undefined;
+        btn.addEventListener('click', async () => {
+          const code = pre.querySelector('code');
+          const text = code?.textContent ?? pre.textContent ?? '';
+          try {
+            await navigator.clipboard.writeText(text);
+            btn.classList.add('is-copied');
+            btn.innerHTML = CHECK_ICON;
+            btn.setAttribute('aria-label', '已複製');
+            window.clearTimeout(resetTimer);
+            resetTimer = window.setTimeout(() => {
+              btn.classList.remove('is-copied');
+              btn.innerHTML = COPY_ICON;
+              btn.setAttribute('aria-label', '複製程式碼');
+            }, 1600);
+          } catch {
+            // Clipboard API unavailable (older browsers, insecure origin) —
+            // silently fail; the user can still select+copy manually.
+          }
+        });
+      });
+    };
+
+    // Image lightbox — wire up click handlers on every img in the
+    // article content. Click an image → open overlay. Click overlay
+    // (or ESC, or close button) → dismiss.
+    const setupImageZoom = () => {
+      const overlay = document.querySelector<HTMLElement>('[data-image-lightbox]');
+      if (!overlay) return;
+      const lbImg = overlay.querySelector<HTMLImageElement>('.image-lightbox__img');
+      const closeBtn = overlay.querySelector<HTMLButtonElement>('.image-lightbox__close');
+      if (!lbImg || !closeBtn) return;
+
+      const open = (src: string, alt: string) => {
+        lbImg.src = src;
+        lbImg.alt = alt;
+        overlay.classList.add('is-open');
+        overlay.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+      };
+      const close = () => {
+        if (!overlay.classList.contains('is-open')) return;
+        overlay.classList.remove('is-open');
+        overlay.setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
+      };
+
+      overlay.addEventListener('click', (e) => {
+        // Close on click on the backdrop OR on the image itself —
+        // anything inside the overlay dismisses, since the
+        // close-button is the only "interactive" element and it
+        // also closes.
+        if (e.target === overlay || e.target === lbImg || (e.target as HTMLElement).closest('.image-lightbox__close')) {
+          close();
+        }
+      });
+      // The ESC handler is attached once at the document level. We
+      // can't close over `overlay` because Astro view transitions
+      // replace the DOM and the closure would be stale on the next
+      // post page — so re-query inside the handler.
+      const w = window as any;
+      if (!w.__imgLightboxEsc) {
+        w.__imgLightboxEsc = (e: KeyboardEvent) => {
+          if (e.key !== 'Escape') return;
+          const ov = document.querySelector<HTMLElement>('[data-image-lightbox]');
+          if (!ov || !ov.classList.contains('is-open')) return;
+          ov.classList.remove('is-open');
+          ov.setAttribute('aria-hidden', 'true');
+          document.body.style.overflow = '';
+        };
+        document.addEventListener('keydown', w.__imgLightboxEsc);
+      }
+
+      document.querySelectorAll<HTMLImageElement>('.post-content img').forEach((img) => {
+        if (img.dataset.zoomInit === '1') return;
+        img.dataset.zoomInit = '1';
+        img.style.cursor = 'zoom-in';
+        img.addEventListener('click', () => open(img.currentSrc || img.src, img.alt));
+      });
+    };
+
+    // TOC scroll-spy — highlights the link(s) matching the heading
+    // the reader is currently looking at. Operates on EVERY element
+    // with [data-toc-slug], so the desktop right-rail and the
+    // mobile bottom sheet share the same active-link state.
+    const setupToc = () => {
+      const links = Array.from(
+        document.querySelectorAll<HTMLAnchorElement>('[data-toc-slug]')
+      );
+      if (links.length === 0) return;
+      // Resolve each unique slug to its heading element on the page.
+      const seen = new Set<string>();
+      const headings: HTMLElement[] = [];
+      for (const a of links) {
+        const slug = a.dataset.tocSlug ?? '';
+        if (!slug || seen.has(slug)) continue;
+        seen.add(slug);
+        const el = document.getElementById(slug);
+        if (el) headings.push(el);
+      }
+      if (headings.length === 0) return;
+
+      const setActive = (slug: string) => {
+        for (const a of links) {
+          a.classList.toggle('is-active', a.dataset.tocSlug === slug);
+        }
+      };
+
+      // Track which headings are above the "reading line" (~25% from top).
+      // The latest one above the line is the current section.
+      const onScroll = () => {
+        const headerH = parseFloat(
+          getComputedStyle(document.documentElement).getPropertyValue('--header-h')
+        ) || 58;
+        const readingLine = headerH + window.innerHeight * 0.25;
+        let active = headings[0];
+        for (const h of headings) {
+          if (h.getBoundingClientRect().top <= readingLine) active = h;
+          else break;
+        }
+        setActive(active.id);
+      };
+
+      let ticking = false;
+      const onScrollThrottled = () => {
+        if (ticking) return;
+        ticking = true;
+        requestAnimationFrame(() => {
+          onScroll();
+          ticking = false;
+        });
+      };
+      document.addEventListener('scroll', onScrollThrottled, { passive: true });
+      window.addEventListener('resize', onScrollThrottled);
+      onScroll();
+    };
+
+    // Mobile bottom-sheet TOC — FAB toggles a slide-up panel. Tap on
+    // any link auto-closes the sheet so the user lands on the
+    // heading without a half-open overlay in the way.
+    const setupTocSheet = () => {
+      const fab = document.querySelector<HTMLElement>('[data-toc-fab]');
+      const sheet = document.querySelector<HTMLElement>('[data-toc-sheet]');
+      if (!fab || !sheet) return;
+
+      const open = () => {
+        sheet.classList.add('is-open');
+        sheet.setAttribute('aria-hidden', 'false');
+        fab.setAttribute('aria-expanded', 'true');
+        document.body.style.overflow = 'hidden';
+      };
+      const close = () => {
+        if (!sheet.classList.contains('is-open')) return;
+        sheet.classList.remove('is-open');
+        sheet.setAttribute('aria-hidden', 'true');
+        fab.setAttribute('aria-expanded', 'false');
+        document.body.style.overflow = '';
+      };
+
+      fab.addEventListener('click', () => {
+        if (sheet.classList.contains('is-open')) close();
+        else open();
+      });
+      sheet.querySelector('[data-close]')?.addEventListener('click', close);
+      // Tap any link inside the sheet → close, then let the browser
+      // do its smooth-scroll to the anchor (CSS scroll-behavior).
+      sheet.querySelectorAll<HTMLAnchorElement>('.toc-sheet__link').forEach((a) => {
+        a.addEventListener('click', () => {
+          // setTimeout 0 so the anchor scroll begins before the sheet
+          // transition takes the panel off-screen.
+          window.setTimeout(close, 50);
+        });
+      });
+
+      // ESC closes from anywhere. Re-query inside the handler so the
+      // closure doesn't go stale across Astro view transitions.
+      const w = window as any;
+      if (!w.__tocSheetEsc) {
+        w.__tocSheetEsc = (e: KeyboardEvent) => {
+          if (e.key !== 'Escape') return;
+          const sh = document.querySelector<HTMLElement>('[data-toc-sheet]');
+          if (!sh || !sh.classList.contains('is-open')) return;
+          sh.classList.remove('is-open');
+          sh.setAttribute('aria-hidden', 'true');
+          document.body.style.overflow = '';
+          document.querySelector<HTMLElement>('[data-toc-fab]')
+            ?.setAttribute('aria-expanded', 'false');
+        };
+        document.addEventListener('keydown', w.__tocSheetEsc);
+      }
+    };
+
+    const setupPost = () => {
+      setupProgress();
+      setupCodeCopy();
+      setupImageZoom();
+      setupToc();
+      setupTocSheet();
+    };
+
+    document.addEventListener('astro:page-load', setupPost);
+  </script>
+</BaseLayout>

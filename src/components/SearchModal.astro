@@ -1,0 +1,92 @@
+---
+import { getCollection } from 'astro:content';
+import { withBase } from '../utils/url';
+
+const indexUrl = withBase('/search.json');
+const baseUrl = withBase('/');
+
+const posts = await getCollection('blog', ({ data }) => !data.draft);
+const catMap = new Map<string, number>();
+const tagMap = new Map<string, number>();
+for (const p of posts) {
+  if (p.data.category) catMap.set(p.data.category, (catMap.get(p.data.category) ?? 0) + 1);
+  for (const t of p.data.tags) tagMap.set(t, (tagMap.get(t) ?? 0) + 1);
+}
+// Alphabetical — matches the home filter chips so a given chip
+// always shows in the same relative position regardless of context.
+const categories = Array.from(catMap.entries())
+  .sort((a, b) => a[0].localeCompare(b[0]));
+const tags = Array.from(tagMap.entries())
+  .sort((a, b) => a[0].localeCompare(b[0]));
+---
+<div
+  id="search-modal"
+  class="search-modal"
+  role="dialog"
+  aria-modal="true"
+  aria-label="搜尋"
+  aria-hidden="true"
+  data-index-url={indexUrl}
+  data-base-url={baseUrl}
+>
+  <div class="search-modal__scrim" data-close></div>
+  <div class="search-modal__panel">
+    <div class="search-modal__inputwrap">
+      <svg class="search-modal__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="11" cy="11" r="7"/>
+        <line x1="20" y1="20" x2="16.65" y2="16.65"/>
+      </svg>
+      <input
+        id="search-input"
+        class="search-modal__input"
+        type="search"
+        placeholder="搜尋文章、分類、標籤…"
+        autocomplete="off"
+        spellcheck="false"
+      />
+      <kbd class="search-modal__kbd">ESC</kbd>
+    </div>
+
+    <div class="search-modal__body">
+      {categories.length > 0 && (
+        <div class="search-sec" data-search-sec="category">
+          <p class="search-sec__label">分類</p>
+          <div class="search-sec__chips">
+            {categories.map(([name, count], i) => (
+              <a
+                class="search-browse__chip search-browse__chip--cat"
+                data-name={name}
+                href={withBase(`/?cat=${encodeURIComponent(name)}`)}
+                style={`--chip-i: ${i}`}
+              >
+                <span>{name}</span><span class="search-browse__count">{count}</span>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+      {tags.length > 0 && (
+        <div class="search-sec" data-search-sec="tag">
+          <p class="search-sec__label">標籤</p>
+          <div class="search-sec__chips">
+            {tags.map(([name, count], i) => (
+              <a
+                class="search-browse__chip"
+                data-name={name}
+                href={withBase(`/?tags=${encodeURIComponent(name)}`)}
+                style={`--chip-i: ${categories.length + i}`}
+              >
+                <span>#{name}</span><span class="search-browse__count">{count}</span>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+      <div class="search-sec" data-search-sec="post" hidden>
+        <p class="search-sec__label">文章</p>
+        <ul id="search-results" class="search-modal__results" role="listbox"></ul>
+      </div>
+      <p class="search-sec__empty" data-search-noresult hidden>沒有符合的結果。</p>
+    </div>
+  </div>
+</div>

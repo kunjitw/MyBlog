@@ -1,0 +1,87 @@
+---
+import { withBase } from '../utils/url';
+// EVA-style theme-switch confirmation overlay.
+// Stripped to focus on the two core lines: 真的假的 / 白色?
+---
+<div
+  id="theme-overlay"
+  class="theme-overlay"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="theme-overlay-question"
+  aria-hidden="true"
+  transition:persist
+  transition:name="theme-overlay"
+>
+  <!-- Background layers -->
+  <div class="theme-overlay__hexgrid" aria-hidden="true">
+    <svg width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
+      <defs>
+        <pattern id="hexpattern" x="0" y="0" width="56" height="48" patternUnits="userSpaceOnUse">
+          <polygon points="28,2 54,16 54,46 28,60 2,46 2,16" fill="none" stroke="rgba(255,85,0,0.22)" stroke-width="0.9"/>
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#hexpattern)"/>
+    </svg>
+  </div>
+  <div class="theme-overlay__scanlines" aria-hidden="true"></div>
+  <div class="theme-overlay__bgflicker" aria-hidden="true"></div>
+  <div class="theme-overlay__flash" aria-hidden="true"></div>
+
+  <!-- Corner crosshairs -->
+  <span class="theme-overlay__corner theme-overlay__corner--tl" aria-hidden="true"></span>
+  <span class="theme-overlay__corner theme-overlay__corner--tr" aria-hidden="true"></span>
+  <span class="theme-overlay__corner theme-overlay__corner--bl" aria-hidden="true"></span>
+  <span class="theme-overlay__corner theme-overlay__corner--br" aria-hidden="true"></span>
+
+  <!-- Bottom caution stripes -->
+  <div class="theme-overlay__stripes" aria-hidden="true"></div>
+
+  <!-- Center stack -->
+  <div class="theme-overlay__inner">
+    <p class="theme-overlay__line1">真的假的</p>
+    <p class="theme-overlay__line2" id="theme-overlay-question">
+      <span class="line2-char line2-char--1">白</span><span class="line2-char line2-char--2">色</span><span class="line2-char line2-char--3">?</span>
+    </p>
+    <div class="theme-overlay__actions">
+      <button type="button" class="theme-overlay__btn" data-confirm>
+        堅持使用白色。
+      </button>
+      <button type="button" class="theme-overlay__btn theme-overlay__btn--primary" data-cancel>
+        <span class="btn-led" aria-hidden="true"></span>
+        <span class="btn-label">繼續使用深色模式</span>
+        <span class="btn-scan btn-scan--top" aria-hidden="true"></span>
+        <span class="btn-scan btn-scan--bot" aria-hidden="true"></span>
+        <span class="btn-corner btn-corner--tl" aria-hidden="true"></span>
+        <span class="btn-corner btn-corner--tr" aria-hidden="true"></span>
+        <span class="btn-corner btn-corner--bl" aria-hidden="true"></span>
+        <span class="btn-corner btn-corner--br" aria-hidden="true"></span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Instant solid-black backdrop. Sits BELOW the EVA overlay (z-95 < 100) so
+     the overlay fades out onto black — the website is never revealed. -->
+<div
+  class="theme-blackout"
+  id="theme-blackout"
+  aria-hidden="true"
+  transition:persist
+  transition:name="theme-blackout"
+></div>
+
+<!-- Flashbang sequence — sibling of overlay so it stays visible after it closes.
+     Transparent container: the gif plays on top, the EVA overlay fades out
+     beneath it onto the blackout. `data-gif-src` keeps the gif from
+     auto-playing until the user clicks confirm. -->
+<div
+  class="flashbang"
+  id="flashbang"
+  aria-hidden="true"
+  transition:persist
+  transition:name="theme-flashbang"
+>
+  <img class="flashbang__gif" data-gif-src={withBase('/flash-bang.gif')} alt="" />
+  <div class="flashbang__whiteout" aria-hidden="true"></div>
+</div>

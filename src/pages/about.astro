@@ -1,0 +1,1042 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { withBase } from '../utils/url';
+
+// HITCON ZeroDay reports — anonymized (某單位), newest first
+const reports = [
+  { date: '2024-10-08', vuln: 'SQLi · 弱密碼 · S-XSS · 目錄權限控管失效等多處', id: 'ZD-2024-01258' },
+  { date: '2024-10-08', vuln: '管理頁面 SQLi · 管理員弱密碼',                 id: 'ZD-2024-01257' },
+  { date: '2024-09-22', vuln: '後台弱密碼',                                 id: 'ZD-2024-01161' },
+  { date: '2024-09-21', vuln: '錯誤訊息 R-XSS',                             id: 'ZD-2024-01155' },
+  { date: '2024-09-21', vuln: '資料庫管理頁面權限控管失效',                    id: 'ZD-2024-01154' },
+  { date: '2024-09-21', vuln: '目錄權限控管失效',                            id: 'ZD-2024-01150' },
+  { date: '2024-09-20', vuln: '學習歷程留言區 S-XSS',                        id: 'ZD-2024-01149' },
+  { date: '2024-09-20', vuln: '測驗系統弱密碼',                              id: 'ZD-2024-01148' },
+  { date: '2024-09-20', vuln: '人員資料表 SQLi',                            id: 'ZD-2024-01138' },
+].sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
+---
+<BaseLayout title="Rafe？誰？" fullTitle>
+  {/* Scroll-driven business card. As the user scrolls past each section
+      below, the matching slot fades into this fixed bar — by the time
+      they reach the bottom of the page every key fact lives here as a
+      compact "single-page name card". JS in the page-level <script>
+      below drives the per-slot --about-*-progress CSS variables. */}
+  <div class="about-card" data-about-card aria-hidden="true">
+    <div class="about-card__inner">
+      <span class="about-card__pill" data-card-slot="bio" data-card-target="name">Rafe（李昆積）</span>
+      <span class="about-card__pill" data-card-slot="work" data-card-target="work-role">任職於紅隊演練部門</span>
+      <span class="about-card__pill" data-card-slot="cert" data-card-target="cert">OSCP+</span>
+      <span class="about-card__pill" data-card-slot="edu" data-card-target="edu-master">北科資工碩士</span>
+      <span class="about-card__pill" data-card-slot="bio" data-card-target="lab">資安實驗室</span>
+      <span class="about-card__pill" data-card-slot="edu" data-card-target="edu-thesis">LLM 安全論文</span>
+      <span class="about-card__pill" data-card-slot="edu" data-card-target="edu-rag">LLM RAG 設計</span>
+      <span class="about-card__pill" data-card-slot="activities" data-card-target="act-defender">教育體系資安攻防演練之攻防檢測員（佳作）</span>
+      <a
+        href="https://zeroday.hitcon.org/user/zer2/vulnerability"
+        target="_blank"
+        rel="noopener"
+        class="about-card__btn"
+        data-card-slot="hitcon"
+        data-card-target="hitcon"
+      >
+        HITCON ZeroDay 通報紀錄
+      </a>
+      <span class="about-card__pill" data-card-slot="activities" data-card-target="act-web">AIS3（網頁安全組）</span>
+      <span class="about-card__pill" data-card-slot="activities" data-card-target="act-cross">AIS3（跨域資訊安全組）</span>
+      <span class="about-card__pill" data-card-slot="activities" data-card-target="act-teamt5">TeamT5 Security Camp（惡意程式分析組）</span>
+    </div>
+  </div>
+
+  <section class="hero hero--about" style="padding-top: 4rem" data-card-trigger="bio">
+    {/* H1 + avatar share a row — avatar is intentionally outsized so
+        its circle gets clipped a touch by the page edges. */}
+    <div class="hero__head">
+      <h1>我是誰。</h1>
+      <img
+        class="avatar"
+        src={withBase('/avatar.jpg')}
+        alt="Rafe"
+        width="320"
+        height="320"
+        onerror="this.style.display='none'"
+      />
+    </div>
+    <p class="subtitle">
+      我是 <span class="bio-keyword" data-card-source="name">Rafe（李昆積）</span>，目前任職於安碁資訊紅隊演練部門，已取得 OSCP+ 證照，具紅隊演練、滲透測試、網頁以及主機弱點掃描等經驗，並協助部門開發專案相關工具、撰寫部門相關教學內容，目前專注在研究 LLM 相關工具與模型資訊，嘗試將 LLM 加入現有工作流提高效率。碩士畢業於臺北科技大學資訊工程系，在學期間加入<span class="bio-keyword" data-card-source="lab">資安實驗室</span>，從碩一開始參加 CTF 競賽、AIS3 課程以及惡意程式分析訓練營等資安相關活動，同時參與醫院產學合作計畫，負責處理 LLM 大語言模型 RAG 資料流、Prompt 與安全設計。
+    </p>
+    <ul class="hero-links">
+      <li>
+        <span class="hero-links__key">信箱</span>
+        <a href="mailto:zer2.main@gmail.com">zer2.main@gmail.com</a>
+      </li>
+    </ul>
+  </section>
+
+  <section class="posts-section" data-card-trigger="work">
+    <h2 class="posts-section__label">工作經歷</h2>
+    <ul class="about-list">
+      <li data-card-source="work-role">
+        <b>紅隊演練工程師</b>
+        <span class="about-list__sub">
+          <a href="https://www.acercsi.com" target="_blank" rel="noopener">安碁資訊股份有限公司</a> · 2025/3 至今
+        </span>
+        <ul class="about-bullets">
+          <li>負責執行紅隊演練、滲透測試、網頁以及主機弱點掃描等專案</li>
+          <li>協助部門開發專案相關工具、撰寫部門相關教學內容</li>
+          <li>近期協助將 LLM 加入部門現有工作流提高效率</li>
+        </ul>
+      </li>
+    </ul>
+  </section>
+
+  <section class="posts-section" data-card-trigger="edu">
+    <h2 class="posts-section__label">學歷</h2>
+    <ul class="about-list">
+      <li data-card-source="edu-master">
+        <b>碩士</b>
+        <span class="about-list__sub">國立臺北科技大學 資訊工程學系 · 2024</span>
+        <ul class="about-bullets">
+          <li data-card-source="edu-thesis">
+            <b>碩士論文 · Prompt Injection 分析與緩解策略</b>
+            <p>以大語言模型聊天機器人為例，系統化整理 LLM Prompt Injection 攻擊面與緩解流程。</p>
+          </li>
+          <li data-card-source="edu-rag">
+            <b>醫院 LLM 產學合作</b>
+            <p>使用者輸入分類（微調 BERT）、Flask API、RAG 資料流與安全設計。</p>
+          </li>
+        </ul>
+      </li>
+      <li>
+        <b>學士</b>
+        <span class="about-list__sub">國立宜蘭大學 資訊工程學系 · 2021</span>
+        <ul class="about-bullets">
+          <li>
+            <b>畢業專題 · 腦波疲勞識別系統</b>
+            <p>透過腦波儀收集四種不同疲勞程度的腦波，使用 Python 訓練 SVM 模型，最後透過 SVM 模型對輸入的腦波資訊進行分類，達到判斷疲勞程度的效果。</p>
+          </li>
+        </ul>
+      </li>
+    </ul>
+  </section>
+
+  <section class="posts-section" data-card-trigger="cert">
+    <h2 class="posts-section__label">證照</h2>
+    <ul class="about-list">
+      <li data-card-source="cert"><b>OSCP+</b>（Offensive Security Certified Professional+）</li>
+    </ul>
+  </section>
+
+  <section class="posts-section" data-card-trigger="hitcon">
+    <h2 class="posts-section__label">
+      HITCON ZeroDay 通報紀錄
+      <a class="section-link" data-card-source="hitcon" href="https://zeroday.hitcon.org/user/zer2/vulnerability" target="_blank" rel="noopener">完整紀錄 →</a>
+    </h2>
+    <ul class="about-list">
+      {reports.map((r) => (
+        <li>
+          <b>{r.vuln}</b>
+          <span class="about-list__sub">{r.date.replaceAll('-', '/')} · 某單位 · {r.id}</span>
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  <section class="posts-section" data-card-trigger="activities">
+    <h2 class="posts-section__label">資安活動經歷</h2>
+    <ul class="about-list">
+      <li data-card-source="act-cross">2024 AIS3 新型態資安實務暑期課程（跨域資訊安全組）</li>
+      <li>2024 AIS3 Pre-exam CTF（<b>32 / 493</b>）</li>
+      <li data-card-source="act-teamt5">2024 TeamT5 Security Camp（惡意程式分析組）</li>
+      <li>2024 TSCCTF</li>
+      <li>2024 AIS3 EOF CTF（91th）</li>
+      <li>2023 CGGC 網路守護者挑戰賽</li>
+      <li>2023 T貓盃全國資安基礎實務能力競賽</li>
+      <li data-card-source="act-defender">112年度 教育體系資安攻防演練之攻防檢測員（<b>佳作</b>）</li>
+      <li>2023 神盾盃資安競賽 預賽</li>
+      <li>112年 資安技能金盾獎 初賽</li>
+      <li>2023 hitcon Re:CTF</li>
+      <li data-card-source="act-web">2023 AIS3 新型態資安實務暑期課程（網頁安全組）</li>
+      <li>2023 AIS3 Pre-exam CTF（86 / 256）</li>
+      <li>2023 MyFirstCTF（12th）</li>
+    </ul>
+  </section>
+
+  {/* Closing name-card. As the user scrolls into this section, the
+      pinned bar's pills physically morph from the top into the slots
+      laid out here — same FLIP technique used for source→pinned, but
+      now pinned→here as a second leg. The "ghost" elements below are
+      invisible (visibility:hidden) — they exist only to define the
+      target rect for each real pill. The real pills (still rooted in
+      .about-card at the top of the DOM) get a transform that lerps
+      into the matching ghost's position as --about-end-progress
+      rises 0 → 1. */}
+  <section class="about-end" data-about-end>
+    {/* Scroll affordance — a thin vertical trail line anchored at
+        the top of the section, with a continuously descending
+        accent-coloured shimmer inside it. Because it lives in the
+        document flow (absolute inside .about-end), it physically
+        passes through the viewport as the user scrolls past the
+        end of activities and into this section — the shimmer
+        keeps flowing downward the whole time, pulling the eye
+        toward the assembling card below. Fades out as soon as
+        --about-end-progress starts rising (destination is in
+        sight, hint has done its job). */}
+    <div class="about-end__hint" aria-hidden="true">
+      <span class="about-end__hint-glow"></span>
+      <span class="about-end__hint-trail"></span>
+    </div>
+    <div class="about-end__frame">
+      {/* Stains layer — paper-style bloody splatter + downward
+          blood streaks accumulate here as the user taps. Lives
+          behind the rest of the card content (z-index: 0); content
+          sits above on the auto stack. overflow:hidden +
+          border-radius:inherit clips everything to the card's
+          rounded silhouette so nothing bleeds past the frame edge
+          — and the blood streaks reaching the bottom feel like
+          they hit the paper's edge. */}
+      <span class="about-end__stains" data-stains aria-hidden="true"></span>
+      {/* SVG turbulence filter for an organic ink-on-paper edge
+          — applied via `filter: url(#paper-bleed)` on stains +
+          streaks. Without this, blobs look like geometric circles;
+          with it, the edges fuzz out naturally like ink soaking
+          into fibres. Width/height 0 keeps the <svg> out of layout. */}
+      <svg
+        class="about-end__defs"
+        width="0"
+        height="0"
+        style="position:absolute;pointer-events:none;overflow:hidden"
+        aria-hidden="true"
+      >
+        <defs>
+          <filter id="paper-bleed" x="-15%" y="-15%" width="130%" height="130%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.075" numOctaves="2" seed="5" />
+            <feDisplacementMap in="SourceGraphic" scale="6" />
+          </filter>
+        </defs>
+      </svg>
+      <img
+        class="about-end__avatar"
+        src={withBase('/avatar.jpg')}
+        alt="Rafe"
+        width="220"
+        height="220"
+        onerror="this.style.display='none'"
+      />
+      {/* Standalone identity block — name as proper display typography
+          and the email written out as a link. Role is intentionally
+          absent: it already lives in the tag grid below as a chip. The
+          pinned-bar name pill and mail icon fade out cleanly before
+          this section materialises (CSS rules tied to
+          --about-bar-progress). */}
+      <div class="about-end__identity">
+        <h3 class="about-end__name">Rafe（李昆積）</h3>
+        <a class="about-end__mail" href="mailto:zer2.main@gmail.com">
+          zer2.main@gmail.com
+        </a>
+      </div>
+
+      <span class="about-end__divider" aria-hidden="true"></span>
+
+      {/* Tags grid — every pinned-bar chip with a matching key here
+          physically migrates into its ghost via FLIP. HITCON sits at
+          the end as the only external-link chip. Name and mail have
+          standalone counterparts above, so they're not in here. */}
+      <div class="about-end__tags">
+        <span class="about-end__ghost" data-end-key="work-role">任職於紅隊演練部門</span>
+        <span class="about-end__ghost" data-end-key="cert">OSCP+</span>
+        <span class="about-end__ghost" data-end-key="edu-master">北科資工碩士</span>
+        <span class="about-end__ghost" data-end-key="lab">資安實驗室</span>
+        <span class="about-end__ghost" data-end-key="edu-thesis">LLM 安全論文</span>
+        <span class="about-end__ghost" data-end-key="edu-rag">LLM RAG 設計</span>
+        <span class="about-end__ghost" data-end-key="act-defender">教育體系資安攻防演練之攻防檢測員（佳作）</span>
+        <span class="about-end__ghost" data-end-key="act-web">AIS3（網頁安全組）</span>
+        <span class="about-end__ghost" data-end-key="act-cross">AIS3（跨域資訊安全組）</span>
+        <span class="about-end__ghost" data-end-key="act-teamt5">TeamT5 Security Camp（惡意程式分析組）</span>
+        <span class="about-end__ghost" data-end-key="hitcon">HITCON ZeroDay 通報紀錄</span>
+      </div>
+
+      {/* Tinder-style action buttons. The X on the left is a prank —
+          it can never actually be clicked, because hovering or
+          tapping it triggers a position swap with the mail button
+          on the right. The user keeps "missing" X and is gently
+          funnelled into mailing instead. The full email is still
+          written out under the name above for keyboard/screen-reader
+          users who would otherwise be locked out by the prank. */}
+      <div class="about-end__actions" data-card-actions>
+        <button
+          class="about-end__action about-end__action--pass"
+          type="button"
+          aria-label="不接受（其實沒辦法真的按到）"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
+            <path d="M6 6 L18 18 M18 6 L6 18" />
+          </svg>
+        </button>
+        <a
+          class="about-end__action about-end__action--like"
+          href="mailto:zer2.main@gmail.com"
+          aria-label="寄信給我"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="5" width="18" height="14" rx="2.5" />
+            <path d="M3 7l9 6 9-6" />
+          </svg>
+        </a>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  // Scroll-driven "name-card" overlay on the About page.
+  //
+  // Each section carries `data-card-trigger="slot1,slot2"` — as the
+  // section scrolls past the header bottom, its progress rises from
+  // 0 → 1 and we expose that to CSS as --about-{slot}-progress on
+  // <html> (used for the slot's opacity).
+  //
+  // Each card element with `data-card-target="key"` is paired with a
+  // page element carrying the matching `data-card-source="key"`. We
+  // FLIP-interpolate the card element's transform between its source's
+  // current viewport position (progress=0) and its natural slot in the
+  // bar (progress=1) — same scroll-driven morph used for the filter
+  // chips. Clicking a card element scrolls back to its source and
+  // briefly highlights it.
+  const setupAboutCard = () => {
+    const card = document.querySelector<HTMLElement>('[data-about-card]');
+    if (!card) return;
+
+    // /about is designed to be read linearly — the morph-up and the
+    // closing-card collapse only make sense from the top. Every entry
+    // to this page starts at scrollY = 0, regardless of any cached
+    // scroll position from a prior visit or browser back/forward.
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+
+    const triggerEls = Array.from(
+      document.querySelectorAll<HTMLElement>('[data-card-trigger]')
+    );
+    if (triggerEls.length === 0) return;
+
+    const triggers = triggerEls.map((el) => ({
+      el,
+      slots: (el.dataset.cardTrigger ?? '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean),
+    }));
+
+    // Pair each [data-card-target] with its matching [data-card-source].
+    type Pair = {
+      target: HTMLElement;
+      source: HTMLElement;
+      slot: string;
+      key: string;
+      ghost: HTMLElement | null;
+    };
+    const pairs: Pair[] = [];
+    card.querySelectorAll<HTMLElement>('[data-card-target]').forEach((target) => {
+      const key = target.dataset.cardTarget ?? '';
+      const source = document.querySelector<HTMLElement>(`[data-card-source="${key}"]`);
+      if (!source) return;
+      const group = target.closest<HTMLElement>('[data-card-slot]');
+      const slot = group?.dataset.cardSlot ?? '';
+      // Closing-card ghost — invisible layout placeholder used as the
+      // morph target when --about-end-progress > 0.
+      const ghost = document.querySelector<HTMLElement>(`[data-end-key="${key}"]`);
+      pairs.push({ target, source, slot, key, ghost });
+    });
+
+    const update = () => {
+      // After leaving /about, the listener is still attached but the
+      // card element is detached — bail.
+      if (!document.body.contains(card)) return;
+
+      const headerH = parseFloat(
+        getComputedStyle(document.documentElement).getPropertyValue('--header-h')
+      ) || 58;
+
+      const slotProgress = new Map<string, number>();
+      let maxProgress = 0;
+      // Capture the activities section's bottom edge (in document
+      // coords) — used as the anchor for the closing-card morph.
+      // The morph isn't allowed to start until this point has scrolled
+      // past the viewport bottom — i.e. the last item of
+      // 資安活動經歷 is out of view because the user has finished
+      // reading it. Without this, the morph would slide pills down
+      // over content the user hasn't read yet.
+      let activitiesBottomDoc: number | null = null;
+
+      // Chip pinning progress — each section's chips fade in as the
+      // section scrolls past the header. We use the section's full
+      // height as the range so the fade is proportional to actual
+      // reading time:
+      //   - short section (cert, ~100 px): pins after ~100 px of scroll
+      //   - tall section (activities, ~600 px): pins gradually across
+      //     the whole reading window, with the chip fully visible by
+      //     the time the user reaches the last item
+      // An earlier version capped this at ~230 px, which meant
+      // activities chips only ever became visible during the last
+      // third of the section — by the time they were pinned, the
+      // user was already past activities and the closing-card morph
+      // was about to start, so they barely registered as "pinned"
+      // at all.
+      for (const { el, slots } of triggers) {
+        const rect = el.getBoundingClientRect();
+        let p = 0;
+        if (rect.height > 0) {
+          p = (headerH - rect.top) / rect.height;
+          p = Math.max(0, Math.min(1, p));
+        }
+        for (const slot of slots) {
+          const prev = slotProgress.get(slot) ?? 0;
+          if (p > prev) slotProgress.set(slot, p);
+        }
+        if (p > maxProgress) maxProgress = p;
+
+        if (slots.includes('activities')) {
+          activitiesBottomDoc = rect.bottom + window.scrollY;
+        }
+      }
+
+      // End-card morph and bar-bg visibility, both anchored on
+      // activities.bottom but with separate timing:
+      //
+      // — endProgress: closing-card morph. Anchored 40% of viewport
+      //   PAST activities.bottom (not at activities.bottom directly),
+      //   because activities.bottom is the section's bottom edge —
+      //   it's only a few pixels below the last LI, so anchoring on
+      //   it directly would trigger the morph while the user is
+      //   still mid-reading. The offset of 0.4 × innerHeight gives
+      //   roughly half a viewport of reading time AFTER the last item
+      //   enters view before the morph begins. An ease-in-quartic
+      //   curve keeps the motion nearly imperceptible at first and
+      //   accelerates only as the user scrolls well past activities.
+      //
+      // — barProgress: bar background. Tied to activities.bottom's
+      //   distance into the upper half of the viewport, so the
+      //   blurred backdrop stays at 0 until the last activity item is
+      //   above the viewport mid-line. Before that, pinned chips
+      //   float at the top without an opaque strip behind them —
+      //   gaps between chips let the user read through.
+      let endProgress = 0;
+      let barProgress = 0;
+      if (activitiesBottomDoc !== null) {
+        const innerH = window.innerHeight;
+        const activitiesBottomViewport = activitiesBottomDoc - window.scrollY;
+        const viewportBottom = window.scrollY + innerH;
+
+        // Bar bg: 0 while activities.bottom is at/below viewport mid;
+        // rises to 1 by the time activities.bottom is roughly at the
+        // header bottom (= last item scrolled fully out of view).
+        const barRange = Math.max(160, innerH * 0.4);
+        barProgress = Math.max(0, Math.min(1,
+          (innerH * 0.5 - activitiesBottomViewport) / barRange
+        ));
+
+        // End-card morph: starts exactly when chip pinning completes.
+        // Chip pinning ends when activities.bottom reaches the header
+        // (= activities.bottom at viewport y = headerH). At that
+        // moment distFromAnchor should be 0, so:
+        //   morphStartOffset = innerH - headerH
+        // This guarantees no overlap between "chips still pinning"
+        // and "chips already migrating to the card" — chips fully
+        // pin first, then the morph begins.
+        // To make room for a meaningful morph distance (chips need
+        // physical scroll to migrate visibly), .about-end is
+        // min-height: 130vh, giving us 30vh + headerH of extra
+        // scroll past chip-pinning end before page bottom.
+        const morphStartOffset = innerH - headerH;
+        const distFromAnchor = viewportBottom - activitiesBottomDoc - morphStartOffset;
+        const morphRange = innerH * 0.3;
+        const rawEnd = Math.max(0, Math.min(1, distFromAnchor / morphRange));
+        endProgress = rawEnd * rawEnd; // ease-in-quad
+      }
+
+      const root = document.documentElement;
+      slotProgress.forEach((p, slot) => {
+        root.style.setProperty(`--about-${slot}-progress`, String(p));
+      });
+      root.style.setProperty('--about-card-progress', String(maxProgress));
+      root.style.setProperty('--about-bar-progress', String(barProgress));
+      root.style.setProperty('--about-end-progress', String(endProgress));
+      // Keep the bar interactive both while it's pinned at top AND
+      // after it's morphed into the closing card — clicking any pill
+      // (wherever it visually lives) scrolls back to its source.
+      card.classList.toggle('is-active', maxProgress > 0.5);
+
+      // Two-leg FLIP morph per pill:
+      //   leg 1 (slot progress 0→1): source position → pinned slot
+      //   leg 2 (end progress 0→1): pinned slot → closing-card ghost
+      // Reads and writes are batched into separate phases so the entire
+      // morph triggers at most one layout pass per scroll event.
+      for (const { target } of pairs) {
+        target.style.transform = '';
+      }
+      const measured = pairs.map(({ target, source, slot, ghost }) => ({
+        target,
+        progress: slotProgress.get(slot) ?? 0,
+        targetRect: target.getBoundingClientRect(),
+        sourceRect: source.getBoundingClientRect(),
+        ghostRect: ghost ? ghost.getBoundingClientRect() : null,
+      }));
+      for (const { target, progress, targetRect, sourceRect, ghostRect } of measured) {
+        // Leg 1: source → pinned slot
+        const baseX = sourceRect.left * (1 - progress) + targetRect.left * progress;
+        let baseY = sourceRect.top * (1 - progress) + targetRect.top * progress;
+        baseY = Math.max(baseY, targetRect.top);
+
+        // Leg 2: pinned slot → closing-card ghost
+        let finalX = baseX;
+        let finalY = baseY;
+        if (ghostRect && endProgress > 0) {
+          finalX = baseX * (1 - endProgress) + ghostRect.left * endProgress;
+          finalY = baseY * (1 - endProgress) + ghostRect.top * endProgress;
+        }
+
+        // Round to integer pixels — sub-pixel translate values make
+        // text inside the pill (and behind it on the page) render at
+        // fractional positions, which can read as blur or jitter as
+        // the user scrolls. Rounding is invisible at scroll speed
+        // but keeps text crisp.
+        const tx = Math.round(finalX - targetRect.left);
+        const ty = Math.round(finalY - targetRect.top);
+        if (Math.abs(tx) > 0 || Math.abs(ty) > 0) {
+          target.style.transform = `translate(${tx}px, ${ty}px)`;
+        }
+      }
+    };
+
+    // Click-to-scroll: clicking a span target on the card jumps back
+    // to the source on the page and flashes a brief highlight. Anchor
+    // (<a>) targets keep their normal link behaviour — mail, GitHub,
+    // and HITCON external URLs.
+    for (const pair of pairs) {
+      if (pair.target.tagName === 'A') continue;
+      pair.target.style.cursor = 'pointer';
+      pair.target.addEventListener('click', () => {
+        const headerH = parseFloat(
+          getComputedStyle(document.documentElement).getPropertyValue('--header-h')
+        ) || 58;
+        const cardH = card.getBoundingClientRect().height;
+        // Position the source just below the about-card with some breathing room.
+        const sourceTop = pair.source.getBoundingClientRect().top + window.scrollY;
+        const targetScroll = Math.max(0, sourceTop - headerH - cardH - 28);
+        window.scrollTo({ top: targetScroll, behavior: 'smooth' });
+
+        // Re-trigger the highlight animation even if the user clicks
+        // the same chip twice in a row.
+        pair.source.classList.remove('is-card-highlight');
+        void pair.source.offsetWidth;
+        pair.source.classList.add('is-card-highlight');
+        window.setTimeout(() => {
+          pair.source.classList.remove('is-card-highlight');
+        }, 1800);
+      });
+    }
+
+    const w = window as any;
+    if (w.__aboutCardScroll) {
+      document.removeEventListener('scroll', w.__aboutCardScroll);
+      window.removeEventListener('resize', w.__aboutCardScroll);
+    }
+    w.__aboutCardScroll = update;
+    document.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    update();
+  };
+
+  document.addEventListener('astro:page-load', setupAboutCard);
+
+  // Dating-app-style card prank with five-tap escalation:
+  //   Tap 1: standard swap (180° rotation)
+  //   Tap 2: cumulative 360° + mid-swap scale dip
+  //   Tap 3: cumulative 540° + harder dip + X colour flash
+  //   Tap 4: cumulative 720° + flash + glow halo
+  //   Tap 5: EXTREME — X swaps one last time then explodes into
+  //          accent-coloured particles. X vanishes for good and the
+  //          mail button springs to the centre of the action row.
+  // After tap 5 the prank locks; the mail button is the only thing
+  // left to click. Each visit to /about resets the tap counter.
+  const setupCardActions = () => {
+    const actions = document.querySelector<HTMLElement>('[data-card-actions]');
+    const passBtn = actions?.querySelector<HTMLElement>('.about-end__action--pass');
+    const likeBtn = actions?.querySelector<HTMLElement>('.about-end__action--like');
+    if (!actions || !passBtn || !likeBtn) return;
+    if (passBtn.dataset.swapInit === '1') return;
+    passBtn.dataset.swapInit = '1';
+
+    const MAX_TAP = 5;
+    // Per-tap "juice" parameters — particle count, particle max size,
+    // shake intensity, drips spawned, stains added. Indexed by tap
+    // level (1-5). Each entry grows monotonically so every tap feels
+    // and looks more violent than the last.
+    const TAP_PARTICLES = [0, 4, 5, 6, 8, 14];   // count per tap
+    const TAP_PARTICLE_SIZE = [0, 6, 7, 8, 10, 14];
+    const TAP_SHAKE = [0, 2, 4, 6, 9, 14];       // shake amplitude in px
+    const TAP_DRIPS = [0, 2, 2, 3, 3, 6];        // blood streaks per tap (halved — was too dense)
+    const TAP_STAINS = [0, 2, 3, 4, 5, 9];       // stains added per tap
+
+    let tapCount = 0;
+    let cooldown = false;
+    const frame = document.querySelector<HTMLElement>('.about-end__frame');
+    const stainsLayer = frame?.querySelector<HTMLElement>('[data-stains]') ?? null;
+
+    // Spawn N accent-coloured particles fanning out from `origin`'s
+    // centre. `sizeMax` caps the particle diameter; `distMax` the
+    // throw distance. Used both for the mini per-tap puff and for
+    // the final tap-5 explosion (which passes bigger numbers).
+    const spawnParticles = (
+      origin: HTMLElement,
+      count: number,
+      sizeMax: number,
+      distMin: number,
+      distMax: number,
+    ) => {
+      const rect = origin.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      for (let i = 0; i < count; i++) {
+        const dot = document.createElement('span');
+        dot.className = 'tap-particle';
+        // Random angle ± jitter so the ring doesn't look mechanical.
+        const angle = (i / count) * Math.PI * 2 + (Math.random() - 0.5) * 0.6;
+        const dist = distMin + Math.random() * (distMax - distMin);
+        const size = 3 + Math.random() * (sizeMax - 3);
+        dot.style.left = `${cx}px`;
+        dot.style.top = `${cy}px`;
+        dot.style.width = `${size}px`;
+        dot.style.height = `${size}px`;
+        dot.style.setProperty('--tx', `${Math.cos(angle) * dist}px`);
+        dot.style.setProperty('--ty', `${Math.sin(angle) * dist}px`);
+        dot.style.setProperty('--delay', `${Math.random() * 90}ms`);
+        document.body.appendChild(dot);
+        window.setTimeout(() => dot.remove(), 1400);
+      }
+    };
+
+    // Blood streaks — vertical "veins" that grow downward across
+    // the card surface, as if the paper is bleeding from where the
+    // X is. Each streak's height, width, growth duration and head
+    // size are all randomised in three classes (short / medium /
+    // long) so no two streaks look like copy-paste of each other.
+    // Streaks live INSIDE the stains layer (overflow:hidden, clipped
+    // to the card's rounded silhouette) so they really flow on the
+    // paper. Streaks whose target reaches past the bottom edge
+    // additionally schedule a chain of edge-drips that keep falling
+    // off the bottom of the card for ~25 s afterwards.
+    const spawnStreaks = (origin: HTMLElement, count: number) => {
+      if (!stainsLayer) return;
+      const layerRect = stainsLayer.getBoundingClientRect();
+      const originRect = origin.getBoundingClientRect();
+      const ox =
+        ((originRect.left + originRect.width / 2 - layerRect.left) / layerRect.width) * 100;
+      const oy =
+        ((originRect.top + originRect.height * 0.42 - layerRect.top) / layerRect.height) * 100;
+      for (let i = 0; i < count; i++) {
+        const streak = document.createElement('span');
+        streak.className = 'blood-streak';
+        // x + y jitter so streaks DON'T all start at the same point —
+        // they look like separate weeping wounds, not parallel lines.
+        const xJitter = (Math.random() - 0.5) * 18;
+        const yJitter = (Math.random() - 0.5) * 6;
+        const x = Math.max(2, Math.min(98, ox + xJitter));
+        const y = Math.max(2, Math.min(98, oy + yJitter));
+        streak.style.left = `${x}%`;
+        streak.style.top = `${y}%`;
+        // Three classes with their own random ranges. Each streak
+        // gets a fresh roll, so heights spread organically across the
+        // full 15-115% range instead of clustering at one value.
+        const r = Math.random();
+        let targetPct: number;
+        if (r < 0.45) {
+          targetPct = 12 + Math.random() * 28;          // short
+        } else if (r < 0.78) {
+          targetPct = 35 + Math.random() * 40;          // medium
+        } else {
+          targetPct = 80 + Math.random() * 45;          // long (often clipped past edge)
+        }
+        streak.style.setProperty('--target-height', `${targetPct}%`);
+        streak.style.setProperty('--duration', `${1.7 + Math.random() * 1.9}s`);
+        streak.style.setProperty('--delay', `${Math.random() * 320}ms`);
+        // Width + head size + tilt all vary per streak so no two look
+        // alike. Tilt (±9°) gives each streak its own direction so
+        // they aren't a row of parallel vertical lines.
+        streak.style.width = `${1.4 + Math.random() * 1.8}px`;
+        streak.style.setProperty('--head-size', `${3.5 + Math.random() * 3.5}px`);
+        streak.style.setProperty('--tilt', `${(Math.random() - 0.5) * 18}deg`);
+        stainsLayer.appendChild(streak);
+      }
+    };
+
+    // Fixed library of debris silhouettes — irregular polygons
+    // (triangles, quads, pentagons, hex). NOT random per piece, so
+    // each shard reads as an actual jagged shape rather than a
+    // smudgy random blob. JS picks one shape per piece + a random
+    // size + rotation, which gives plenty of variation without
+    // the per-piece noise of fully random border-radius.
+    const DEBRIS_SHAPES = [
+      'polygon(50% 0%, 100% 100%, 0% 100%)',                                 // triangle
+      'polygon(0% 0%, 100% 30%, 60% 100%)',                                  // sharp triangle
+      'polygon(30% 0%, 100% 60%, 0% 100%)',                                  // skewed triangle
+      'polygon(20% 0%, 100% 20%, 80% 100%, 0% 80%)',                         // tilted square
+      'polygon(0% 30%, 70% 0%, 100% 70%, 30% 100%)',                         // diamond-ish
+      'polygon(15% 0%, 100% 15%, 85% 100%, 0% 85%)',                         // parallelogram
+      'polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%)',               // pentagon
+      'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)',       // hexagon
+      'polygon(0% 50%, 100% 0%, 100% 100%)',                                 // right triangle
+      'polygon(0% 0%, 100% 50%, 0% 100%)',                                   // arrowhead
+    ];
+
+    // Shatter the X button into physical fragments that fall to
+    // the bottom of the card and STAY as wreckage. The card's
+    // bottom edge functions as the "floor": stains-layer overflow
+    // clips fragments to the rounded silhouette so they pile up
+    // along the curved bottom. Each fragment uses a polygon clip
+    // (from the fixed shape library) for an angular, broken look
+    // — no round blobs.
+    const shatterButton = (origin: HTMLElement) => {
+      if (!stainsLayer) return;
+      const layerRect = stainsLayer.getBoundingClientRect();
+      const originRect = origin.getBoundingClientRect();
+      const ox =
+        ((originRect.left + originRect.width / 2 - layerRect.left) / layerRect.width) * 100;
+      const oy =
+        ((originRect.top + originRect.height / 2 - layerRect.top) / layerRect.height) * 100;
+      const FRAGMENT_COUNT = 22;
+      for (let i = 0; i < FRAGMENT_COUNT; i++) {
+        const piece = document.createElement('span');
+        piece.className = 'pass-debris';
+        piece.style.left = `${ox}%`;
+        piece.style.top = `${oy}%`;
+        // Size classes: dust / chunk / shard. Distribution biased
+        // toward smaller pieces so a few big shards stand out.
+        const sc = Math.random();
+        const size = sc < 0.55 ? 4 + Math.random() * 3
+                   : sc < 0.88 ? 6 + Math.random() * 5
+                                : 10 + Math.random() * 6;
+        const aspect = 0.7 + Math.random() * 0.6;
+        piece.style.width = `${size}px`;
+        piece.style.height = `${size * aspect}px`;
+        // Pick a fixed angular shape — no border-radius blob.
+        piece.style.clipPath = DEBRIS_SHAPES[i % DEBRIS_SHAPES.length];
+        // Final landing spot — scattered along the bottom of the
+        // card "floor", clustered near the X's x with some
+        // outliers thrown further.
+        const finalXpct = Math.max(3, Math.min(97, ox + (Math.random() - 0.5) * 42));
+        const finalYpct = 89 + Math.random() * 8;
+        const dxPx = ((finalXpct - ox) / 100) * layerRect.width;
+        const dyPx = ((finalYpct - oy) / 100) * layerRect.height;
+        piece.style.setProperty('--dx', `${dxPx}px`);
+        piece.style.setProperty('--dy', `${dyPx}px`);
+        piece.style.setProperty('--rotate', `${(Math.random() - 0.5) * 720}deg`);
+        piece.style.setProperty('--duration', `${1.3 + Math.random() * 0.7}s`);
+        piece.style.setProperty('--delay', `${Math.random() * 180}ms`);
+        stainsLayer.appendChild(piece);
+      }
+    };
+
+    // ── Mega Man-boss-death explosion helpers ──────────────────────
+    // Burst particles at an arbitrary viewport coordinate. Used by
+    // triggerExtreme to fire multiple sub-explosions at offset
+    // positions, creating the rippling "ka-boom-boom-boom" cadence
+    // of a classic 2D boss death.
+    const spawnParticlesAt = (
+      cx: number,
+      cy: number,
+      count: number,
+      sizeMax: number,
+      distMin: number,
+      distMax: number,
+    ) => {
+      for (let i = 0; i < count; i++) {
+        const dot = document.createElement('span');
+        dot.className = 'tap-particle';
+        const angle = (i / count) * Math.PI * 2 + (Math.random() - 0.5) * 0.6;
+        const dist = distMin + Math.random() * (distMax - distMin);
+        const size = 3 + Math.random() * (sizeMax - 3);
+        dot.style.left = `${cx}px`;
+        dot.style.top = `${cy}px`;
+        dot.style.width = `${size}px`;
+        dot.style.height = `${size}px`;
+        dot.style.setProperty('--tx', `${Math.cos(angle) * dist}px`);
+        dot.style.setProperty('--ty', `${Math.sin(angle) * dist}px`);
+        dot.style.setProperty('--delay', `${Math.random() * 100}ms`);
+        document.body.appendChild(dot);
+        window.setTimeout(() => dot.remove(), 1400);
+      }
+    };
+    // Full-viewport radial flash (accent-coloured) — the big
+    // brightness spike of the explosion peak.
+    const spawnFlash = () => {
+      const flash = document.createElement('div');
+      flash.className = 'tap-flash';
+      document.body.appendChild(flash);
+      window.setTimeout(() => flash.remove(), 720);
+    };
+    // Jagged star burst — manga "BANG!" sprite. A spiky polygon
+    // with a white-to-accent radial fill, scaled up dramatically
+    // and rotated as it fades. Replaces the boring circular
+    // shockwave with something that reads as an actual cartoon
+    // explosion, not a clean ripple.
+    const spawnStarBurst = (cx: number, cy: number, delay: number = 0, scale: number = 1) => {
+      window.setTimeout(() => {
+        const burst = document.createElement('div');
+        burst.className = 'tap-burst';
+        burst.style.left = `${cx}px`;
+        burst.style.top = `${cy}px`;
+        burst.style.setProperty('--rotate-from', `${Math.random() * 360}deg`);
+        burst.style.setProperty('--rotate-to', `${Math.random() * 60 + 20}deg`);
+        burst.style.setProperty('--final-scale', String(scale));
+        document.body.appendChild(burst);
+        window.setTimeout(() => burst.remove(), 750);
+      }, delay);
+    };
+
+    // Persona 5-style speech bubbles, anchored to the mail button
+    // (mail is the "speaker"). One at a time — each pops in above
+    // mail with the P5 skewed-parallelogram + offset accent shadow,
+    // holds briefly, then pops out before the next bubble arrives.
+    // Sequence reads as a short shouted accusation chain:
+    // 🚔 → 🫵 → 👮.
+    const P5_DIALOGUES: Array<{
+      emoji: string;
+      offsetX: number;  // px from mail's centre
+      offsetY: number;  // px above mail's top edge
+      rotate: string;
+    }> = [
+      { emoji: '\u{1F694}', offsetX:  18, offsetY: -22, rotate: '-9deg' }, // 🚔
+      { emoji: '\u{1FAF5}', offsetX: -14, offsetY: -30, rotate: '6deg'  }, // 🫵
+      { emoji: '\u{1F46E}', offsetX:  22, offsetY: -26, rotate: '-4deg' }, // 👮
+    ];
+    const BUBBLE_LIFE = 1450;  // ms per bubble before removal
+    const BUBBLE_GAP  = 1550;  // ms between bubble spawns
+    const showP5Dialogue = () => {
+      P5_DIALOGUES.forEach((d, i) => {
+        window.setTimeout(() => {
+          // Re-measure mail every time — it's the moving target
+          // (after walk + peek it's at the centre of the actions row).
+          const rect = likeBtn.getBoundingClientRect();
+          const cx = rect.left + rect.width / 2 + d.offsetX;
+          const cy = rect.top + d.offsetY;
+          const bubble = document.createElement('div');
+          bubble.className = 'p5-bubble';
+          bubble.textContent = d.emoji;
+          bubble.style.left = `${cx}px`;
+          bubble.style.top = `${cy}px`;
+          bubble.style.setProperty('--rotate', d.rotate);
+          document.body.appendChild(bubble);
+          window.setTimeout(() => bubble.remove(), BUBBLE_LIFE);
+        }, i * BUBBLE_GAP);
+      });
+    };
+
+    // Crack — an SVG zigzag path drawn across the X button. Each
+    // tap adds a new crack with random segment angles and an
+    // optional fork, so the cracks look like a real surface
+    // splitting under stress, not like sword slashes.
+    // The path is "drawn" via stroke-dasharray + offset animation,
+    // so each crack visibly travels across the button rather than
+    // appearing all at once. Cracks accumulate and stay (children
+    // of the button) until the button itself shatters at tap 5.
+    const SVG_NS = 'http://www.w3.org/2000/svg';
+    const generateCrackPath = (): string => {
+      const segCount = 5 + Math.floor(Math.random() * 4); // 5-8
+      const totalLen = 28 + Math.random() * 18;            // 28-46
+      const segLen = totalLen / segCount;
+      const baseAngle = Math.random() * Math.PI * 2;
+      const pts: { x: number; y: number }[] = [{ x: 0, y: 0 }];
+      let x = 0, y = 0;
+      for (let i = 0; i < segCount; i++) {
+        // Each segment deviates ±0.45 rad from base direction —
+        // enough to look jagged but not so much it folds back.
+        const angle = baseAngle + (Math.random() - 0.5) * 0.9;
+        x += Math.cos(angle) * segLen;
+        y += Math.sin(angle) * segLen;
+        pts.push({ x, y });
+      }
+      let path = pts.map((p, i) =>
+        `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`
+      ).join(' ');
+      // ~60% chance the crack forks from a midway point.
+      if (Math.random() < 0.6) {
+        const branchAt = 2 + Math.floor(Math.random() * (pts.length - 2));
+        const branchStart = pts[branchAt];
+        const branchAngle = baseAngle + (Math.random() < 0.5 ? -1 : 1) * (0.9 + Math.random() * 0.6);
+        const branchSegs = 2 + Math.floor(Math.random() * 2);
+        let bx = branchStart.x, by = branchStart.y;
+        path += ` M ${bx.toFixed(1)} ${by.toFixed(1)}`;
+        for (let i = 0; i < branchSegs; i++) {
+          const a = branchAngle + (Math.random() - 0.5) * 0.7;
+          bx += Math.cos(a) * segLen * 0.75;
+          by += Math.sin(a) * segLen * 0.75;
+          path += ` L ${bx.toFixed(1)} ${by.toFixed(1)}`;
+        }
+      }
+      return path;
+    };
+    const addCrack = (origin: HTMLElement) => {
+      const svg = document.createElementNS(SVG_NS, 'svg');
+      svg.setAttribute('viewBox', '-30 -30 60 60');
+      svg.classList.add('pass-crack-svg');
+      const path = document.createElementNS(SVG_NS, 'path');
+      path.setAttribute('d', generateCrackPath());
+      path.setAttribute('stroke-width', String(1.2 + Math.random() * 0.8));
+      svg.appendChild(path);
+      origin.appendChild(svg);
+      // Set dasharray to path's actual length so the draw animation
+      // reveals the whole crack (including any branches via M).
+      const len = path.getTotalLength();
+      path.style.setProperty('--len', String(len));
+    };
+
+    // Stains — irregular accent-coloured blobs splattered onto the
+    // card surface near the X. They accumulate inside the stains
+    // layer (overflow:hidden, clipped to card silhouette), so each
+    // tap leaves the card more visibly "dirty".
+    const addStains = (count: number) => {
+      if (!stainsLayer) return;
+      for (let i = 0; i < count; i++) {
+        const stain = document.createElement('span');
+        stain.className = 'card-stain';
+        // Cluster near the X (bottom-left quadrant of the card).
+        const x = 4 + Math.random() * 38;   // % from left
+        const y = 70 + Math.random() * 28;  // % from top
+        const size = 14 + Math.random() * 28;
+        stain.style.left = `${x}%`;
+        stain.style.top = `${y}%`;
+        stain.style.width = `${size}px`;
+        stain.style.height = `${size}px`;
+        stain.style.setProperty('--rotate', `${Math.random() * 360}deg`);
+        stainsLayer.appendChild(stain);
+      }
+    };
+
+    // Re-trigger the shake animation by toggling the class with a
+    // forced reflow in between — without the reflow the second
+    // application would be a no-op (CSS doesn't see a state change).
+    const triggerShake = (intensity: number) => {
+      if (!frame) return;
+      frame.style.setProperty('--shake-x', `${intensity}px`);
+      frame.classList.remove('is-tap-shake');
+      void frame.offsetWidth;
+      frame.classList.add('is-tap-shake');
+      window.setTimeout(() => frame.classList.remove('is-tap-shake'), 300);
+    };
+
+    const triggerExtreme = () => {
+      // BANG. Manga-explosion vocabulary:
+      //   1. Full-viewport accent flash (the bright moment)
+      //   2. Three star-shaped bursts at staggered delays + offsets,
+      //      each with its own random rotation — chaotic, jagged
+      //      silhouettes layered over each other rather than a clean
+      //      circular ripple
+      //   3. Main particle ring + four sub-bursts at offset positions
+      //   4. Big card shake + wave of streaks + extra stains
+      //   5. shatterButton spawns 22 angular debris shards that fall
+      //      with gravity to the bottom of the card and stay as
+      //      permanent wreckage
+      //   6. .is-extreme triggers the button fade + mail walk
+      const rect = passBtn.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+
+      spawnFlash();
+      // Three star bursts — big primary, then two smaller follow-ups
+      // at offset positions, all at different rotations for layered
+      // chaotic feel.
+      spawnStarBurst(cx, cy, 0, 1.3);
+      spawnStarBurst(cx - 25, cy - 18, 110, 0.85);
+      spawnStarBurst(cx + 30, cy + 14, 240, 0.7);
+
+      spawnParticles(passBtn, 24, 18, 90, 220);
+      for (let i = 0; i < 4; i++) {
+        window.setTimeout(() => {
+          const offX = (Math.random() - 0.5) * 110;
+          const offY = (Math.random() - 0.5) * 80;
+          spawnParticlesAt(
+            cx + offX,
+            cy + offY,
+            8 + Math.floor(Math.random() * 5),
+            10,
+            50,
+            120,
+          );
+        }, 60 + i * 110);
+      }
+      triggerShake(18);
+      spawnStreaks(passBtn, 8);
+      addStains(10);
+      shatterButton(passBtn);
+      actions.classList.add('is-extreme');
+      passBtn.style.pointerEvents = 'none';
+      // Mail's CSS animations: walk 700-3300ms, peek 3500-5100ms
+      // (relative to .is-extreme being added). 200 ms after the
+      // peek wraps, the P5 dialogue chain starts.
+      window.setTimeout(showP5Dialogue, 5300);
+    };
+
+    const swap = () => {
+      if (cooldown) return;
+      if (tapCount >= MAX_TAP) return; // locked after extreme
+      cooldown = true;
+      tapCount += 1;
+      actions.dataset.tapLevel = String(tapCount);
+
+      // No position swap — X stays put and just takes damage in
+      // place. Cracks accumulate on the button, blood drips fall
+      // past the card, stains spread across the card surface.
+      if (tapCount === MAX_TAP) {
+        // The fifth tap is the trigger but NOT the explosion. Give
+        // small immediate feedback (so the click feels responsive),
+        // then let the X visibly "charge up" for 1.2s — accent
+        // halo glows, button vibrates, particles get sucked in —
+        // before the BIG bang fires. Pure dramatic anticipation.
+        triggerShake(4);
+        spawnParticles(passBtn, 3, 5, 25, 50);
+        addCrack(passBtn);
+        actions.classList.add('is-charging');
+        window.setTimeout(() => {
+          actions.classList.remove('is-charging');
+          triggerExtreme();
+        }, 1200);
+      } else {
+        triggerShake(TAP_SHAKE[tapCount]);
+        spawnParticles(
+          passBtn,
+          TAP_PARTICLES[tapCount],
+          TAP_PARTICLE_SIZE[tapCount],
+          30,
+          30 + tapCount * 14,
+        );
+        spawnStreaks(passBtn, TAP_DRIPS[tapCount]);
+        addCrack(passBtn);
+        addStains(TAP_STAINS[tapCount]);
+      }
+
+      window.setTimeout(() => { cooldown = false; }, 160);
+    };
+
+    passBtn.addEventListener('mouseenter', swap);
+    passBtn.addEventListener('touchstart', swap, { passive: true });
+    passBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      swap();
+    });
+
+    // When leaving /about via Astro view transitions, sweep up any
+    // body-appended decoration that would otherwise survive into
+    // the next page (particles mid-flight, dialogue bubbles still
+    // showing, star bursts mid-animation).
+    const w = window as any;
+    if (!w.__aboutDecorCleanup) {
+      w.__aboutDecorCleanup = () => {
+        document
+          .querySelectorAll('.tap-particle, .tap-flash, .tap-burst, .p5-bubble')
+          .forEach((el) => el.remove());
+      };
+      document.addEventListener('astro:before-swap', w.__aboutDecorCleanup);
+    }
+  };
+
+  document.addEventListener('astro:page-load', setupCardActions);
+</script>

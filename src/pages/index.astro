@@ -1,0 +1,102 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PostCard from '../components/PostCard.astro';
+
+const posts = (await getCollection('blog', ({ data }) => import.meta.env.PROD ? !data.draft : true))
+  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+
+const catCounts = new Map<string, number>();
+const tagCounts = new Map<string, number>();
+const yearCounts = new Map<number, number>();
+for (const p of posts) {
+  if (p.data.category) catCounts.set(p.data.category, (catCounts.get(p.data.category) ?? 0) + 1);
+  const yr = p.data.pubDate.getFullYear();
+  yearCounts.set(yr, (yearCounts.get(yr) ?? 0) + 1);
+  for (const t of p.data.tags) {
+    tagCounts.set(t, (tagCounts.get(t) ?? 0) + 1);
+  }
+}
+// All chip lists sort alphabetically so a given tag/category always
+// appears in the same relative position — filter chips, search modal
+// chips, and per-article meta strips all stay in lockstep. Years stay
+// reverse-chronological (newest first) since they're inherently
+// ordered, not categorical.
+const categories = Array.from(catCounts.entries())
+  .sort((a, b) => a[0].localeCompare(b[0]));
+const tags = Array.from(tagCounts.entries())
+  .sort((a, b) => a[0].localeCompare(b[0]));
+const years = Array.from(yearCounts.entries())
+  .sort((a, b) => b[0] - a[0]);
+
+const hasFilters = categories.length > 0 || tags.length > 0 || years.length > 0;
+---
+<BaseLayout wide>
+  <div class="filter-pinned" data-filter-pinned aria-hidden="true">
+    <div class="filter-pinned__inner">
+      <span class="filter-pinned__label">過濾中</span>
+      <div class="filter-pinned__chips" data-filter-pinned-chips></div>
+      <button class="filter-pinned__clear" type="button" data-filter-pinned-clear>清除全部</button>
+    </div>
+  </div>
+
+  {hasFilters && (
+    <section class="filter" data-filter>
+      {years.length > 0 && (
+        <div class="filter__row" data-filter-row>
+          <span class="filter__label">年份</span>
+          <div class="filter__chips" data-filter-group="year">
+            <button type="button" class="filter-chip filter-chip--all is-active" data-filter-value="">全部</button>
+            {years.map(([year, count]) => (
+              <button type="button" class="filter-chip" data-filter-value={String(year)}>
+                <span>{year}</span>
+                <span class="filter-chip__count">{count}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {categories.length > 0 && (
+        <div class="filter__row" data-filter-row>
+          <span class="filter__label">分類</span>
+          <div class="filter__chips" data-filter-group="category">
+            <button type="button" class="filter-chip filter-chip--all is-active" data-filter-value="">全部</button>
+            {categories.map(([name, count]) => (
+              <button type="button" class="filter-chip filter-chip--cat" data-filter-value={name}>
+                <span>{name}</span>
+                <span class="filter-chip__count">{count}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {tags.length > 0 && (
+        <div class="filter__row" data-filter-row>
+          <span class="filter__label">標籤</span>
+          <div class="filter__chips" data-filter-group="tag">
+            <button type="button" class="filter-chip filter-chip--all is-active" data-filter-value="">全部</button>
+            {tags.map(([name, count]) => (
+              <button type="button" class="filter-chip" data-filter-value={name}>
+                <span>#{name}</span>
+                <span class="filter-chip__count">{count}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
+  )}
+
+  <section class="posts-section">
+    <h2 class="posts-section__label">文章</h2>
+    <div data-posts-grid>
+      {posts.map((post, i) => <PostCard post={post} index={i} />)}
+    </div>
+    <p class="filter-empty" data-filter-empty hidden>沒有符合目前條件的文章。</p>
+    {posts.length === 0 && (
+      <p style="color: var(--fg-dim)">
+        no posts yet — drop a <code>.md</code> into <code>src/content/blog/</code>
+      </p>
+    )}
+  </section>
+</BaseLayout>
