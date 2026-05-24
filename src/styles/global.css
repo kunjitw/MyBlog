@@ -115,6 +115,13 @@
 html {
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
+  /* Defence-in-depth against horizontal scroll: body already has
+     overflow-x: hidden, but on post pages a wide element (long
+     code line, oversized image, etc.) was producing a scrollable
+     <html> on some browsers. Clipping both ensures the viewport
+     never scrolls sideways — keeps fixed-position buttons
+     (back-to-top, TOC FAB) anchored at the visible right edge. */
+  overflow-x: clip;
 }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
 
@@ -2418,9 +2425,25 @@ body:has([data-about-end]) .site-footer {
   max-width: 740px;
   margin-left: auto;
   margin-right: auto;
+  /* Prevent any descendant from forcing the article wider than the
+     viewport on narrow screens. Long URLs / inline code / hashes
+     wrap; tables and pre scroll inside their own boxes. */
+  min-width: 0;
 }
-.post-content { font-size: 1.05rem; line-height: 1.65; }
+.post-content { font-size: 1.05rem; line-height: 1.65; overflow-wrap: break-word; }
 .post-content p { margin: 1.1rem 0; }
+/* Inline code can contain long unbreakable tokens (hashes, paths,
+   URLs). Allow them to break anywhere so they don't push the page
+   wider than the viewport. */
+.post-content :not(pre) > code { overflow-wrap: anywhere; word-break: break-word; }
+/* Markdown tables ship without any container — give them their own
+   horizontal scroll box rather than blowing out the page width. */
+.post-content table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+}
 /* When a TOC link (or any in-page anchor) jumps to a heading,
    leave room so the header strip + a small breathing margin don't
    clip the heading. */
