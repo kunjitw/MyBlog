@@ -1,0 +1,49 @@
+---
+import { getCollection, render } from 'astro:content';
+import PostLayout from '../../layouts/PostLayout.astro';
+
+export async function getStaticPaths() {
+  // Chronological (oldest → newest) so neighbours are publication
+  // neighbours: 上一篇 = the previous (older) post, 下一篇 = the newer one.
+  const posts = (await getCollection('blog')).sort(
+    (a, b) => a.data.pubDate.valueOf() - b.data.pubDate.valueOf()
+  );
+  const brief = (p: (typeof posts)[number]) => ({
+    id: p.id,
+    title: p.data.title,
+    pubDate: p.data.pubDate,
+  });
+  return posts.map((post, i) => ({
+    params: { slug: post.id },
+    props: {
+      post,
+      older: i > 0 ? brief(posts[i - 1]) : null,
+      newer: i < posts.length - 1 ? brief(posts[i + 1]) : null,
+    },
+  }));
+}
+
+const { post, older, newer } = Astro.props;
+const { Content, headings } = await render(post);
+
+// Reading time — CJK chars read ~350/min, Latin words ~200/min.
+// Code blocks and image syntax are skimmed, not read; strip them.
+const raw = post.body ?? '';
+const stripped = raw
+  .replace(/```[\s\S]*?```/g, ' ')
+  .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ');
+const cjkCount = (stripped.match(/[一-鿿㐀-䶿]/g) ?? []).length;
+const wordCount = (
+  stripped.replace(/[一-鿿㐀-䶿]/g, ' ').match(/[A-Za-z0-9_'-]+/g) ?? []
+).length;
+const readingMinutes = Math.max(1, Math.round(cjkCount / 350 + wordCount / 200));
+---
+<PostLayout
+  post={post.data}
+  headings={headings}
+  readingMinutes={readingMinutes}
+  older={older}
+  newer={newer}
+>
+  <Content />
+</PostLayout>

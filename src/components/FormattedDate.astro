@@ -1,0 +1,7 @@
+---
+type Props = { date: Date };
+const { date } = Astro.props;
+const iso = date.toISOString();
+const display = date.toLocaleDateString('en-CA'); // YYYY-MM-DD
+---
+<time datetime={iso}>{display}</time>

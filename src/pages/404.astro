@@ -1,0 +1,15 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { withBase } from '../utils/url';
+---
+<BaseLayout title="404 找不到頁面">
+  <section class="notfound">
+    <p class="notfound__code">404</p>
+    <h1>找不到這個頁面</h1>
+    <p>它可能被移動、改名,或者從來就不存在。</p>
+    <div class="notfound__actions">
+      <a href={withBase('/')}>回到文章列表</a>
+      <a href={withBase('/about')}>我是誰</a>
+    </div>
+  </section>
+</BaseLayout>

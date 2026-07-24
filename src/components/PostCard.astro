@@ -1,0 +1,51 @@
+---
+import { withBase } from '../utils/url';
+import type { CollectionEntry } from 'astro:content';
+
+type Props = {
+  post: CollectionEntry<'blog'>;
+  index?: number;
+};
+
+const { post } = Astro.props;
+const postUrl = withBase(`/posts/${post.id}/`);
+const d = post.data.pubDate;
+const iso = d.toISOString();
+const display = d.toLocaleDateString('en-CA'); // YYYY-MM-DD
+// Sort tags alphabetically so they appear in the same relative
+// order everywhere (post row, post page meta, filter chips, search).
+const sortedTags = [...post.data.tags].sort((a, b) => a.localeCompare(b));
+---
+<article
+  class="post-row"
+  data-category={post.data.category ?? ''}
+  data-year={String(post.data.pubDate.getFullYear())}
+  data-tags={JSON.stringify(post.data.tags)}
+>
+  <div class="post-row__side">
+    <time class="post-row__date" datetime={iso}>{display}</time>
+    {post.data.category && (
+      <a class="post-card__cat" href={withBase(`/?cat=${encodeURIComponent(post.data.category)}`)}>
+        {post.data.category}
+      </a>
+    )}
+  </div>
+  <div class="post-row__main">
+    <h2 class="post-row__title">
+      <a href={postUrl}>
+        <span>{post.data.title}</span>
+        <span class="post-row__arrow" aria-hidden="true">→</span>
+      </a>
+    </h2>
+    {post.data.description && (
+      <a class="post-row__desc" href={postUrl}>{post.data.description}</a>
+    )}
+    {sortedTags.length > 0 && (
+      <div class="post-row__meta">
+        {sortedTags.map((t) => (
+          <a class="tag" href={withBase(`/?tags=${encodeURIComponent(t)}`)}>#{t}</a>
+        ))}
+      </div>
+    )}
+  </div>
+</article>

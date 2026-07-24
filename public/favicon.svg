@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Full-bleed 黛藍 block + a big, bold dark >_ prompt that fills the
+       block (reads clearly at 16px). -->
+  <rect width="128" height="128" rx="28" fill="#6885B8"/>
+  <polyline points="31,36 59,64 31,92" fill="none" stroke="#17171a"
+            stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="67" y="80" width="30" height="13" rx="6.5" fill="#17171a"/>
+</svg>
