@@ -1,0 +1,832 @@
+---
+import { withBase } from '../utils/url';
+// The About hero's opening, staged in three panels. The photo comes in
+// first, then 「我是李昆積」 in a balloon, then 早安你好 lands one
+// character at a time. In the ending every piece travels to its place in
+// the hero, and 「我是李昆積」 lifts and slams into the bio last, shaking
+// the text around it before everything settles exactly where it was.
+//
+// Wiring: render this inside the About hero, give the hero
+// data-intro="pending", and wrap 「我是李昆積」 in the bio with
+// [data-intro-line]. Undo those three to get the plain hero back.
+const fontFace = `<style>@font-face{font-family:"Hero Black";src:url("${withBase('/fonts/hero-black.woff2')}") format("woff2");font-weight:900;font-display:block}</style>`;
+---
+<Fragment set:html={fontFace} />
+
+<style is:global>
+  /* Noto Sans TC Black, subset to 早安你好我是李昆積, so the heading the
+     pieces fly into is set in the same face they fly in. */
+  .hero--about .hero__head h1 {
+    font-family: "Hero Black", var(--font-sans);
+    font-weight: 900;
+  }
+
+  /* The intro replaces the hero's fade-in. Until the script takes over,
+     the hero's content stays hidden; if the script never starts, it
+     shows anyway after 3s. */
+  .hero--about[data-intro] { position: relative; }
+  html.js body:has(.about-end) .hero--about[data-intro] {
+    opacity: 1;
+    animation: none;
+  }
+  html.js .hero--about[data-intro="pending"] .hero__head h1,
+  html.js .hero--about[data-intro="pending"] .hero__head .avatar,
+  html.js .hero--about[data-intro="pending"] .subtitle,
+  html.js .hero--about[data-intro="pending"] .hero-links {
+    opacity: 0;
+    animation: hi-failsafe 1ms 3s forwards;
+  }
+  @keyframes hi-failsafe { to { opacity: 1; } }
+
+  /* The rest of the page waits for the finale: it stays hidden, and the
+     page can't scroll, until 「我是李昆積」 lands; then the sections
+     cascade in with the page's usual reveal. */
+  html.js body:has(.hero--about[data-intro="pending"]) .posts-section {
+    opacity: 0;
+    animation: hi-failsafe 1ms 3s forwards;
+  }
+  html.js body:has(.hero--about[data-intro="playing"]) .posts-section {
+    opacity: 0;
+    animation: none;
+  }
+  /* The reserved gutter keeps the layout from shifting when the scrollbar
+     goes away and comes back. */
+  html.hi-lock {
+    overflow: hidden;
+    scrollbar-gutter: stable;
+  }
+
+  /* The page: wider than the text column, up to 1200px. While it plays,
+     a click anywhere on it skips to the end. */
+  .hi-root {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: calc(50% - min(50vw, 600px));
+    width: min(100vw, 1200px);
+    z-index: 5;
+  }
+  .hi-root * { pointer-events: none; }
+  .hi-gutter { position: absolute; inset: 0; z-index: 9; background: var(--bg); }
+  .hi-panel { position: absolute; inset: 0; z-index: 10; overflow: hidden; background: var(--bg); }
+  .hi-tone::before, .hi-morph__tone {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background-image: radial-gradient(circle, color-mix(in srgb, var(--fg) 35%, transparent) 1.4px, transparent 1.9px);
+    background-size: 7px 7px;
+  }
+  /* A gradient tone rising from the bottom of the panel. */
+  .hi-tone-rise::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background-image: radial-gradient(circle, color-mix(in srgb, var(--fg) 40%, transparent) 1.3px, transparent 1.8px);
+    background-size: 6px 6px;
+    -webkit-mask-image: linear-gradient(to top, #000, transparent 75%);
+            mask-image: linear-gradient(to top, #000, transparent 75%);
+  }
+  .hi-edge { position: absolute; left: 0; top: 0; z-index: 6; overflow: visible; }
+  .hi-edge polygon { fill: none; stroke: var(--fg); stroke-width: 8; stroke-linejoin: miter; stroke-dasharray: 1 1; }
+  .hi-lines { position: absolute; left: 0; top: 0; z-index: 1; overflow: visible; }
+  .hi-ring { position: absolute; z-index: 2; border: 3px solid var(--fg); border-radius: 50%; }
+  .hi-head {
+    position: absolute;
+    z-index: 3;
+    font-family: "Hero Black", var(--font-sans);
+    font-weight: 900;
+    line-height: 1;
+    white-space: nowrap;
+    color: var(--fg);
+  }
+  .hi-head .hi-ch { display: inline-block; transform-origin: 50% 88%; }
+  .hi-face { position: absolute; z-index: 0; display: block; max-width: none; height: auto; filter: grayscale(1) contrast(1.4); }
+
+  /* Speech balloon: white with a black outline in either theme, as in
+     print. It stays above the photo's morph, which passes under it. */
+  .hi-bub { position: absolute; z-index: 27; }
+  .hi-bub__shape { position: absolute; left: 0; top: 0; overflow: visible; }
+  .hi-bub__o { fill: none; stroke: #111; stroke-width: 6; stroke-linejoin: round; }
+  .hi-bub__f { fill: #fff; }
+  .hi-bub__t {
+    position: absolute;
+    left: 0;
+    top: 0;
+    color: #111;
+    font-family: "Hero Black", var(--font-sans);
+    font-weight: 900;
+    line-height: 1.15;
+    white-space: nowrap;
+  }
+  .hi-bub__t .hi-ch { display: inline-block; }
+
+  /* The ending's travelling pieces. */
+  .hi-morph { position: absolute; inset: 0; z-index: 25; }
+  .hi-morph__img { position: absolute; display: block; max-width: none; height: auto; transform-origin: 0 0; }
+  .hi-fly {
+    position: absolute;
+    z-index: 30;
+    width: 1em;
+    height: 1em;
+    margin: -0.5em 0 0 -0.5em;
+    line-height: 1;
+    text-align: center;
+    font-family: "Hero Black", var(--font-sans);
+    font-weight: 900;
+    white-space: nowrap;
+    color: var(--fg);
+  }
+  .hi-fly__a, .hi-fly__b { position: absolute; left: 0; right: 0; text-align: center; white-space: pre; }
+  .hi-fly__a { top: 0; height: 1em; line-height: 1; }
+  .hi-fly__b { top: 50%; opacity: 0; }
+  /* The heading's own fill, matched to the h1's line box. */
+  .hi-fly__b--hero {
+    height: 1.15em;
+    margin-top: -0.575em;
+    line-height: 1.15;
+    background: linear-gradient(180deg, var(--hero-grad-start) 0%, var(--hero-grad-end) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .hi-spot { position: absolute; inset: 0; z-index: 29; }
+  /* Copies of the bio's text that shake while the real text stays put. */
+  .hi-qk { position: absolute; z-index: 31; white-space: pre; transform-origin: 50% 100%; }
+  .hi-ripple { position: absolute; z-index: 30; overflow: visible; }
+  .hi-ripple ellipse { fill: none; stroke: var(--fg); stroke-width: 1.5; }
+</style>
+
+<script>
+  const TEXT = '早安你好';
+  const INTRO = '我是李昆積';
+  // One drawing held for two frames at 24 fps.
+  const F = 1000 / 12;
+  const NS = 'http://www.w3.org/2000/svg';
+  const CJK = /[⺀-鿿豈-﫿︰-﹏＀-￯]/;
+
+  type Pt = [number, number];
+  type Box = { x: number; y: number; w: number; h: number; cx: number; cy: number };
+  type Layout = {
+    head: Pt[];
+    face: Pt[];
+    line: Pt[];
+    enter: { head: string; face: string; line: string };
+    headAt: Pt;
+    headSize: Pt;
+    faceAt: Pt;
+    faceW: number;
+    bubble: { at: Pt; size: number; perW: number; tip: Pt };
+  };
+  type Parts = {
+    hero: HTMLElement;
+    h1: HTMLElement;
+    avatar: HTMLImageElement;
+    bio: HTMLElement;
+    intro: HTMLElement;
+    links: HTMLElement | null;
+  };
+
+  // Panel layouts in percent of the page; each mirrors the hero at that width.
+  const LAYOUTS: Record<'columns' | 'stack', Layout> = {
+    // Wide: the photo is a tall panel on the right, the heading and the
+    // line share the left.
+    columns: {
+      head: [[0, 0], [62, 0], [58.7, 55], [0, 60]],
+      face: [[64, 0], [100, 0], [100, 100], [58, 100]],
+      line: [[0, 62], [58.6, 57], [56, 100], [0, 100]],
+      enter: { face: 'translateX(100%)', line: 'translateY(100%)', head: 'translateX(-100%)' },
+      headAt: [0.29, 0.28],
+      headSize: [0.115, 0.23],
+      faceAt: [0.81, 0.32],
+      faceW: 0.86,
+      bubble: { at: [0.3, 0.8], size: 52, perW: 0.05, tip: [0.62, 0.62] },
+    },
+    // Narrow: stacked like the hero there, the photo on top.
+    stack: {
+      face: [[0, 0], [100, 0], [100, 40], [0, 44]],
+      head: [[0, 46], [100, 42], [100, 62], [0, 66]],
+      line: [[0, 68], [100, 64], [100, 100], [0, 100]],
+      enter: { face: 'translateY(-100%)', line: 'translateY(100%)', head: 'translateX(-100%)' },
+      headAt: [0.5, 0.54],
+      headSize: [0.2, 0.12],
+      faceAt: [0.5, 0.2],
+      faceW: 1.6,
+      bubble: { at: [0.5, 0.83], size: 30, perW: 0.08, tip: [0.5, 0.42] },
+    },
+  };
+
+  const rand = (a: number, b: number) => a + Math.random() * (b - a);
+  const token = (el: Element, name: string) => getComputedStyle(el).getPropertyValue(name).trim();
+  const temp = (parent: Element, cls: string, tag = 'div') => {
+    const n = document.createElement(tag);
+    n.className = cls;
+    parent.appendChild(n);
+    return n;
+  };
+  const tempSvg = (parent: Element, cls: string, w: number, h: number, inner: string) => {
+    const s = document.createElementNS(NS, 'svg');
+    s.setAttribute('class', cls);
+    s.setAttribute('width', String(w));
+    s.setAttribute('height', String(h));
+    s.setAttribute('viewBox', `0 0 ${w} ${h}`);
+    s.innerHTML = inner;
+    parent.appendChild(s);
+    return s;
+  };
+  const place = (el: HTMLElement, g: { x: number; y: number; w: number; h: number }) =>
+    Object.assign(el.style, { left: `${g.x}px`, top: `${g.y}px`, width: `${g.w}px`, height: `${g.h}px` });
+  const spans = (el: HTMLElement, text: string) => {
+    el.textContent = '';
+    return [...text].map((ch) => {
+      const s = temp(el, 'hi-ch', 'span');
+      s.textContent = ch;
+      return s;
+    });
+  };
+  const shake = (amp: number, steps = 10): Keyframe[] => {
+    const f: Keyframe[] = [];
+    for (let k = 0; k < steps; k++) {
+      const d = 1 - k / steps;
+      f.push({ translate: `${rand(-amp, amp) * d}px ${rand(-amp, amp) * d}px` });
+    }
+    f.push({ translate: '0px 0px' });
+    return f;
+  };
+  // Where el sits inside ref's padding box, which is where ref's absolute children live.
+  const box = (el: Element, ref: HTMLElement): Box => {
+    const c = ref.getBoundingClientRect();
+    const r = el.getBoundingClientRect();
+    const x = r.left - c.left - ref.clientLeft;
+    const y = r.top - c.top - ref.clientTop;
+    return { x, y, w: r.width, h: r.height, cx: x + r.width / 2, cy: y + r.height / 2 };
+  };
+  // Text nodes under root that are actually on screen (screen-reader-only text is skipped).
+  const textNodes = (root: Element) => {
+    const out: Text[] = [];
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+      if (!n.parentElement?.closest('.visually-hidden')) out.push(n as Text);
+    }
+    return out;
+  };
+  // Each character of el's text: where it sits and how it is set.
+  const charBoxes = (el: Element, ref: HTMLElement) => {
+    const c = ref.getBoundingClientRect();
+    const range = document.createRange();
+    return textNodes(el).flatMap((n) => {
+      const cs = getComputedStyle(n.parentElement as Element);
+      return [...n.data].map((_, i) => {
+        range.setStart(n, i);
+        range.setEnd(n, i + 1);
+        const r = range.getBoundingClientRect();
+        return {
+          cx: r.left - c.left - ref.clientLeft + r.width / 2,
+          cy: r.top - c.top - ref.clientTop + r.height / 2,
+          h: r.height,
+          font: cs.fontFamily,
+          weight: cs.fontWeight,
+          color: cs.color,
+        };
+      });
+    });
+  };
+  // Positioned copies of every visible piece of text in root: CJK characters
+  // one at a time, Latin runs as whole words so kerning and ligatures match.
+  // Each copy's line box is its text box, so at rest it sits exactly on the
+  // real text.
+  const cloneText = (root: Element, intro: Element, ref: HTMLElement) => {
+    const c = ref.getBoundingClientRect();
+    const range = document.createRange();
+    const out: { el: HTMLElement; cx: number; cy: number; intro: boolean }[] = [];
+    for (const n of textNodes(root)) {
+      const cs = getComputedStyle(n.parentElement as Element);
+      const s = n.data;
+      for (let i = 0; i < s.length;) {
+        if (/\s/.test(s[i])) {
+          i += 1;
+          continue;
+        }
+        let j = i + 1;
+        if (!CJK.test(s[i])) while (j < s.length && !/\s/.test(s[j]) && !CJK.test(s[j])) j += 1;
+        range.setStart(n, i);
+        range.setEnd(n, j);
+        const r = range.getBoundingClientRect();
+        const x = r.left - c.left - ref.clientLeft;
+        const y = r.top - c.top - ref.clientTop;
+        const el = temp(ref, 'hi-qk', 'span');
+        el.textContent = s.slice(i, j);
+        Object.assign(el.style, {
+          left: `${x}px`,
+          top: `${y}px`,
+          height: `${r.height}px`,
+          lineHeight: `${r.height}px`,
+          fontFamily: cs.fontFamily,
+          fontSize: cs.fontSize,
+          fontWeight: cs.fontWeight,
+          fontStyle: cs.fontStyle,
+          letterSpacing: cs.letterSpacing,
+          textShadow: cs.textShadow,
+          color: cs.color,
+        });
+        out.push({ el, cx: x + r.width / 2, cy: y + r.height / 2, intro: intro.contains(n) });
+        i = j;
+      }
+    }
+    return out;
+  };
+  // One piece jolted by the shock wave: later and weaker the farther it is
+  // from the impact, always settling exactly where it started.
+  const jolt = (el: HTMLElement, d: number, o0: number | null = null, k = 1) => {
+    const a = (2 + 13 * Math.exp(-d / 240)) * k;
+    const r = rand(-1, 1) * (1.2 + 7 * Math.exp(-d / 240)) * k;
+    const jx = rand(-1, 1) * a * 0.35;
+    const kf: Keyframe[] = [
+      { translate: '0px 0px', rotate: '0deg', easing: 'cubic-bezier(0.2, 0.8, 0.4, 1)' },
+      { translate: `${jx}px ${-a}px`, rotate: `${r}deg`, offset: 0.22, easing: 'cubic-bezier(0.6, 0, 0.8, 0.4)' },
+      { translate: `${-jx * 0.4}px ${a * 0.3}px`, rotate: `${-r * 0.5}deg`, offset: 0.48, easing: 'cubic-bezier(0.2, 0.8, 0.4, 1)' },
+      { translate: `${jx * 0.15}px ${-a * 0.15}px`, rotate: `${r * 0.2}deg`, offset: 0.72, easing: 'cubic-bezier(0.6, 0, 0.8, 0.4)' },
+      { translate: '0px 0px', rotate: '0deg' },
+    ];
+    // Bio copies also light up as the wave reaches them.
+    if (o0 !== null) {
+      kf[0].opacity = o0;
+      kf[1].opacity = 1;
+      kf[4].opacity = 1;
+    }
+    const delay = d / 1.8;
+    el.animate(kf, { duration: 480, delay, fill: o0 !== null ? 'both' : 'none' });
+    return delay + 480;
+  };
+  // Hand-drawn focus lines: tapered wedges that stop at slightly different
+  // depths short of a clear ellipse around (cx, cy).
+  const focusLines = (parent: Element, w: number, h: number, cx: number, cy: number, rx: number, ry: number) => {
+    const R = Math.hypot(Math.max(cx, w - cx), Math.max(cy, h - cy)) + 60;
+    let d = '';
+    for (let k = 0; k < 170; k++) {
+      const a = (k / 170) * Math.PI * 2 + rand(-0.012, 0.012);
+      const ux = Math.cos(a);
+      const uy = Math.sin(a);
+      const r0 = ((rx * ry) / Math.hypot(ry * ux, rx * uy)) * rand(1, 1.6);
+      const b = rand(0.8, 5.5);
+      const ox = cx + ux * R;
+      const oy = cy + uy * R;
+      d += `M${(cx + ux * r0).toFixed(1)} ${(cy + uy * r0).toFixed(1)}L${(ox - uy * b).toFixed(1)} ${(oy + ux * b).toFixed(1)}L${(ox + uy * b).toFixed(1)} ${(oy - ux * b).toFixed(1)}Z`;
+    }
+    const s = tempSvg(parent, 'hi-lines', w, h, `<path d="${d}" style="fill: var(--fg)" />`);
+    s.style.transformOrigin = `${cx}px ${cy}px`;
+    return s;
+  };
+  // Speech balloon: white ellipse, black outline, a tail toward `tip`
+  // (parent coordinates). Each character is its own span so it can fly.
+  const makeBubble = (parent: HTMLElement, text: string, cx: number, cy: number, size: number, tip: Pt) => {
+    const el = temp(parent, 'hi-bub');
+    const t = temp(el, 'hi-bub__t', 'span');
+    t.style.fontSize = `${size}px`;
+    const chars = spans(t, text);
+    const tw = t.offsetWidth;
+    const th = t.offsetHeight;
+    const rx = (tw / 2) * 1.18 + size * 0.62;
+    const ry = (th / 2) * 1.18 + size * 0.62;
+    place(el, { x: cx - rx, y: cy - ry, w: rx * 2, h: ry * 2 });
+    t.style.left = `${rx - tw / 2}px`;
+    t.style.top = `${ry - th / 2}px`;
+    const a = Math.atan2(tip[1] - cy, tip[0] - cx);
+    const ux = Math.cos(a);
+    const uy = Math.sin(a);
+    const edge = (rx * ry) / Math.hypot(ry * ux, rx * uy);
+    const len = Math.max(12, Math.min(size * 1.3, Math.hypot(tip[0] - cx, tip[1] - cy) - edge));
+    const tipLocal: Pt = [rx + ux * (edge + len), ry + uy * (edge + len)];
+    // The tail's base: two points either side of where the tail leaves the ellipse.
+    const t0 = Math.atan2(rx * uy, ry * ux);
+    const s = (size * 0.3) / Math.hypot(rx * Math.sin(t0), ry * Math.cos(t0));
+    const P = (q: number) => `${(rx + rx * Math.cos(q)).toFixed(1)} ${(ry + ry * Math.sin(q)).toFixed(1)}`;
+    const tail = `<path d="M${P(t0 - s)} L${tipLocal[0].toFixed(1)} ${tipLocal[1].toFixed(1)} L${P(t0 + s)} Z" />`;
+    // Outlines first, fills on top, so the tail and the ellipse share one outline.
+    const ell = `<ellipse cx="${rx}" cy="${ry}" rx="${rx}" ry="${ry}" />`;
+    el.insertAdjacentHTML('afterbegin', `<svg class="hi-bub__shape" width="${rx * 2}" height="${ry * 2}"><g class="hi-bub__o">${ell}${tail}</g><g class="hi-bub__f">${ell}${tail}</g></svg>`);
+    return { el, chars, tip: tipLocal };
+  };
+  const clip = (pts: Pt[]) => `polygon(${pts.map(([x, y]) => `${x.toFixed(1)}px ${y.toFixed(1)}px`).join(', ')})`;
+  // Where a ray from (cx, cy) at angle a leaves a convex polygon.
+  const ray = (pts: Pt[], cx: number, cy: number, a: number): Pt => {
+    const dx = Math.cos(a);
+    const dy = Math.sin(a);
+    let best = Infinity;
+    pts.forEach(([x1, y1], k) => {
+      const [x2, y2] = pts[(k + 1) % pts.length];
+      const ex = x2 - x1;
+      const ey = y2 - y1;
+      const den = dx * ey - dy * ex;
+      if (Math.abs(den) < 1e-9) return;
+      const t = ((x1 - cx) * ey - (y1 - cy) * ex) / den;
+      const u = ((x1 - cx) * dy - (y1 - cy) * dx) / den;
+      if (t > 0 && u >= -1e-6 && u <= 1 + 1e-6) best = Math.min(best, t);
+    });
+    return Number.isFinite(best) ? [cx + dx * best, cy + dy * best] : [cx, cy];
+  };
+
+  // No scrolling while the intro plays (touch needs its own block on iOS).
+  const blockTouch = (e: TouchEvent) => e.preventDefault();
+  const lockScroll = (on: boolean) => {
+    document.documentElement.classList.toggle('hi-lock', on);
+    if (on) document.addEventListener('touchmove', blockTouch, { passive: false });
+    else document.removeEventListener('touchmove', blockTouch);
+  };
+
+  let stopActive: (() => void) | null = null;
+
+  const play = ({ hero, h1, avatar, bio, intro, links }: Parts) => {
+    const root = temp(hero, 'hi-root');
+    root.setAttribute('aria-hidden', 'true');
+    // The page fits on screen even when the hero runs past the fold (phones).
+    const top = Math.max(0, hero.getBoundingClientRect().top);
+    root.style.bottom = 'auto';
+    root.style.height = `${Math.min(hero.clientHeight, window.innerHeight - top)}px`;
+    const W = root.clientWidth;
+    const H = root.clientHeight;
+    const L = W / H >= 1.3 ? LAYOUTS.columns : LAYOUTS.stack;
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const timers: number[] = [];
+    let over = false;
+    // Hand the plain hero back: used at the end, on a click, and on any error.
+    const finish = () => {
+      if (over) return;
+      over = true;
+      timers.forEach(clearTimeout);
+      root.remove();
+      [hero, h1, avatar, bio, intro, links].forEach((el) => {
+        if (!el) return;
+        el.getAnimations().forEach((a) => a.cancel());
+        ['opacity', 'visibility', 'transition', 'transform-origin'].forEach((p) => el.style.removeProperty(p));
+      });
+      hero.dataset.intro = 'done';
+      lockScroll(false);
+      if (stopActive === stop) stopActive = null;
+    };
+    // Leaving the page mid-way: just stop, the page is being replaced.
+    const stop = () => {
+      over = true;
+      timers.forEach(clearTimeout);
+      lockScroll(false);
+    };
+    stopActive = stop;
+    const at = (ms: number, fn: () => void) => {
+      timers.push(window.setTimeout(() => {
+        if (over) return;
+        try {
+          fn();
+        } catch (err) {
+          console.error(err);
+          finish();
+        }
+      }, Math.max(0, ms)));
+    };
+    const shakeHero = (amp: number, dur = 300) => hero.animate(shake(amp), { duration: dur });
+    // A tap or click skips to the end; a swipe does not (it only meets the scroll lock).
+    root.addEventListener('click', finish);
+
+    const gutter = temp(root, 'hi-gutter');
+    const panel = (pct: Pt[], cls: string) => {
+      const pts = pct.map(([x, y]) => [(x / 100) * W, (y / 100) * H] as Pt);
+      const el = temp(root, `hi-panel ${cls}`);
+      el.style.clipPath = clip(pts);
+      const edge = tempSvg(el, 'hi-edge', W, H, `<polygon points="${pts.map((p) => p.join(',')).join(' ')}" pathLength="1" />`);
+      return { el, pts, edge };
+    };
+    const head = panel(L.head, '');
+    const face = panel(L.face, 'hi-tone');
+    const line = panel(L.line, 'hi-tone-rise');
+    const panels = [head, face, line];
+    // The photo first, then the line, then the heading lands last.
+    const T = { face: 0, line: 600, bubble: 800, head: 1500, chars: 1880, end: 3500 };
+    const enter = (p: typeof head, from: string, t: number, amp: number) => {
+      p.el.animate([{ transform: from }, { transform: 'none' }], { duration: 300, delay: t, easing: 'cubic-bezier(0.8, 0, 0.2, 1)', fill: 'both' });
+      at(t + 300, () => shakeHero(amp, 260));
+    };
+    enter(face, L.enter.face, T.face, 9);
+    enter(line, L.enter.line, T.line, 9);
+    enter(head, L.enter.head, T.head, 5);
+
+    // The photo panel: close-up on the face (about 51% across, 23% down the
+    // photo), slowly pushing in, sized so it always covers its panel.
+    const fx0 = W * L.faceAt[0];
+    const fy0 = H * L.faceAt[1];
+    const xs = face.pts.map((q) => q[0]);
+    const ys = face.pts.map((q) => q[1]);
+    const fw = Math.max(
+      W * L.faceW,
+      (fx0 - Math.min(...xs)) / 0.51,
+      (Math.max(...xs) - fx0) / 0.49,
+      (fy0 - Math.min(...ys)) / 0.23,
+      (Math.max(...ys) - fy0) / 0.77,
+    );
+    const img = temp(face.el, 'hi-face', 'img') as HTMLImageElement;
+    img.src = avatar.currentSrc || avatar.src;
+    img.alt = '';
+    Object.assign(img.style, { width: `${fw}px`, left: `${fx0 - fw * 0.51}px`, top: `${fy0 - fw * 0.23}px`, transformOrigin: '51% 23%' });
+    img.animate([{ scale: 1 }, { scale: 1.08 }], { duration: 3200, delay: T.face, fill: 'both' });
+    // The ending morphs a copy of the photo; decode it now so it paints on its first frame.
+    const mimg = document.createElement('img');
+    mimg.className = 'hi-morph__img';
+    mimg.src = img.src;
+    mimg.alt = '';
+    mimg.decode().catch(() => {});
+
+    // The line, in a balloon above the panels so its tail can reach the speaker.
+    const B = L.bubble;
+    const bub = makeBubble(root, INTRO, W * B.at[0], H * B.at[1], Math.min(B.size, W * B.perW), [W * B.tip[0], H * B.tip[1]]);
+    bub.el.style.transformOrigin = `${bub.tip[0]}px ${bub.tip[1]}px`;
+    bub.el.animate(
+      [{ transform: 'scale(0)' }, { transform: 'scale(1.12)', offset: 0.6 }, { transform: 'scale(1)' }],
+      { duration: 340, delay: T.bubble, easing: 'cubic-bezier(0.2, 0.9, 0.3, 1)', fill: 'both' },
+    );
+    const words = bub.chars;
+
+    // The heading panel: focus lines wait for the heading, which lands one character at a time.
+    const hs = Math.min(W * L.headSize[0], H * L.headSize[1], 132);
+    const headEl = temp(head.el, 'hi-head');
+    headEl.style.fontSize = `${hs}px`;
+    const hc = spans(headEl, TEXT);
+    const hcx = W * L.headAt[0];
+    const hcy = H * L.headAt[1];
+    Object.assign(headEl.style, { left: `${hcx - headEl.offsetWidth / 2}px`, top: `${hcy - headEl.offsetHeight / 2}px` });
+    const lines = focusLines(head.el, W, H, hcx, hcy, hs * 2.6, hs * 0.9);
+    const land = (i: number) => {
+      const last = i === hc.length - 1;
+      const r = box(hc[i], head.el);
+      const ring = temp(head.el, 'hi-ring');
+      place(ring, { x: r.cx - hs * 0.6, y: r.cy - hs * 0.6, w: hs * 1.2, h: hs * 1.2 });
+      ring.animate(
+        [{ transform: 'scale(0.5)', opacity: 0.9 }, { transform: `scale(${last ? 3.4 : 2.1})`, opacity: 0 }],
+        { duration: last ? 600 : 420, easing: 'cubic-bezier(0.1, 0.8, 0.3, 1)', fill: 'forwards' },
+      );
+      lines.animate([{ scale: last ? 1.3 : 1.12 }, { scale: 1 }], { duration: last ? 360 : 240, easing: 'cubic-bezier(0.2, 0.8, 0.3, 1)' });
+      if (!last) {
+        head.el.animate(shake(8, 6), { duration: 180 });
+        return;
+      }
+      // The last one hits hardest: two inverted impact frames (a flash, so
+      // not under reduced motion) and a full shake.
+      if (!reduced) head.el.animate([{ filter: 'invert(1)' }, { filter: 'invert(1)' }], { duration: F * 2 });
+      shakeHero(20, 440);
+    };
+    // From the upper left, from above, from the upper right, and the last
+    // one straight at the camera after a held breath.
+    const flights = [
+      { x: -180, y: -130, s: 3.4, r: -18 },
+      { x: 0, y: -210, s: 3.2, r: 12 },
+      { x: 180, y: -130, s: 3.4, r: -10 },
+      { x: 0, y: 0, s: 6, r: 0 },
+    ];
+    const beats = [0, 240, 480, 880];
+    const D = 420;
+    hc.forEach((ch, i) => {
+      const f = flights[i];
+      const t = T.chars + beats[i];
+      ch.animate(
+        [
+          { transform: `translate(${f.x}px, ${f.y}px) scale(${f.s}) rotate(${f.r}deg)`, opacity: 0, filter: 'blur(10px)', easing: 'cubic-bezier(0.6, 0, 1, 0.6)' },
+          { transform: 'translate(0px, 0px) scale(1) rotate(0deg)', opacity: 1, filter: 'blur(0px)', offset: 0.55, easing: 'steps(1, end)' },
+          { transform: 'scale(1.32, 0.66)', offset: 0.62, easing: 'steps(1, end)' },
+          { transform: 'scale(1.32, 0.66)', offset: 0.74, easing: 'steps(1, end)' },
+          { transform: 'scale(0.92, 1.12)', offset: 0.84, easing: 'cubic-bezier(0.2, 0.8, 0.3, 1)' },
+          { transform: 'scale(1, 1)', opacity: 1, filter: 'blur(0px)' },
+        ],
+        { duration: D, delay: t, fill: 'both' },
+      );
+      at(t + D * 0.55, () => land(i));
+    });
+
+    // The ending: the heading and the photo go home first, then 「我是李昆積」
+    // closes the show.
+    at(T.end, () => {
+      const E = 'cubic-bezier(0.83, 0, 0.17, 1)';
+      // Borders draw back, the focus lines go, the page underneath comes through.
+      panels.forEach((p, i) => (p.edge.firstChild as SVGElement).animate([{ strokeDashoffset: 0 }, { strokeDashoffset: 1 }], { duration: 420, delay: i * 40, easing: 'cubic-bezier(0.6, 0, 0.4, 1)', fill: 'forwards' }));
+      lines.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 220, fill: 'forwards' });
+      [gutter, ...panels.map((p) => p.el)].forEach((el) => el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 420, delay: 160, fill: 'forwards' }));
+      // The bio waits underneath, dimmed, for the finale.
+      bio.style.transition = 'opacity 420ms ease 160ms';
+      bio.style.opacity = '0.25';
+
+      // The heading: each character flies to its place in the h1, two
+      // fading ghosts trailing it, taking on the h1's own fill on the way.
+      const HEAD = 800;
+      const to = charBoxes(h1, root);
+      const h1Size = parseFloat(getComputedStyle(h1).fontSize);
+      const heads: HTMLElement[] = [];
+      hc.forEach((ch, i) => {
+        const r = box(ch, root);
+        const dx = to[i].cx - r.cx;
+        const dy = to[i].cy - r.cy;
+        const s = h1Size / hs;
+        const base = 80 + i * 45;
+        [0.12, 0.3].forEach((op, k) => {
+          const ghost = temp(root, 'hi-fly');
+          ghost.textContent = ch.textContent;
+          Object.assign(ghost.style, { left: `${r.cx}px`, top: `${r.cy}px`, fontSize: `${hs}px` });
+          ghost.animate(
+            [{ transform: 'translate(0px, 0px) scale(1)', opacity: op }, { opacity: op, offset: 0.7 }, { transform: `translate(${dx}px, ${dy}px) scale(${s})`, opacity: 0 }],
+            { duration: HEAD, delay: base + (2 - k) * 34, easing: E, fill: 'both' },
+          );
+          heads.push(ghost);
+        });
+        const el = temp(root, 'hi-fly');
+        Object.assign(el.style, { left: `${r.cx}px`, top: `${r.cy}px`, fontSize: `${hs}px` });
+        const solid = temp(el, 'hi-fly__a', 'span');
+        solid.textContent = ch.textContent;
+        const fill = temp(el, 'hi-fly__b hi-fly__b--hero', 'span');
+        fill.textContent = ch.textContent;
+        el.animate([{ transform: 'translate(0px, 0px) scale(1)' }, { transform: `translate(${dx}px, ${dy}px) scale(${s})` }], { duration: HEAD, delay: base, easing: E, fill: 'both' });
+        solid.animate([{ opacity: 1 }, { opacity: 1, offset: 0.3 }, { opacity: 0, offset: 0.7 }], { duration: HEAD, delay: base, fill: 'both' });
+        fill.animate([{ opacity: 0 }, { opacity: 0, offset: 0.3 }, { opacity: 1, offset: 0.7 }], { duration: HEAD, delay: base, fill: 'both' });
+        heads.push(el);
+        ch.style.visibility = 'hidden';
+      });
+      at(80 + 3 * 45 + 2 * 34 + HEAD, () => {
+        h1.style.opacity = '1';
+        heads.forEach((n) => n.remove());
+      });
+
+      // The photo: its panel closes into the round avatar and the colour comes back.
+      const MORPH = 840;
+      const fr = box(img, root);
+      const av = box(avatar, root);
+      const morph = temp(root, 'hi-morph');
+      Object.assign(mimg.style, { left: `${fr.x}px`, top: `${fr.y}px`, width: `${fr.w}px` });
+      morph.appendChild(mimg);
+      const tone = temp(morph, 'hi-morph__tone');
+      // Both outlines are sampled along the same rays, the panel's corners
+      // included, so the panel turns into the circle without twisting.
+      const pts = face.pts;
+      const pcx = pts.reduce((sum, q) => sum + q[0], 0) / pts.length;
+      const pcy = pts.reduce((sum, q) => sum + q[1], 0) / pts.length;
+      const angles = [
+        ...Array.from({ length: 48 }, (_, k) => (k / 48) * Math.PI * 2),
+        ...pts.map(([x, y]) => (Math.atan2(y - pcy, x - pcx) + Math.PI * 2) % (Math.PI * 2)),
+      ].sort((a, b) => a - b);
+      const start = clip(angles.map((a) => ray(pts, pcx, pcy, a)));
+      const round = clip(angles.map((a) => [av.cx + (Math.cos(a) * av.w) / 2, av.cy + (Math.sin(a) * av.h) / 2] as Pt));
+      morph.animate([{ clipPath: start }, { clipPath: round }], { duration: MORPH, delay: 160, easing: E, fill: 'both' });
+      mimg.animate(
+        [
+          { transform: 'translate(0px, 0px) scale(1)', filter: 'grayscale(1) contrast(1.4)' },
+          { transform: `translate(${av.x - fr.x}px, ${av.y - fr.y}px) scale(${av.w / fr.w})`, filter: 'grayscale(0) contrast(1)' },
+        ],
+        { duration: MORPH, delay: 160, easing: E, fill: 'both' },
+      );
+      tone.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 500, delay: 160, fill: 'forwards' });
+      img.style.visibility = 'hidden';
+      // The real avatar's ring and shadow fade in as the copy hands over.
+      at(160 + MORPH, () => {
+        avatar.style.transition = 'opacity 200ms ease';
+        avatar.style.opacity = '1';
+        morph.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200, fill: 'forwards' }).finished.then(() => morph.remove(), () => {});
+      });
+
+      // The finale, once both have landed: the words leave their balloon,
+      // glide to just above their place in the bio, lift a little more,
+      // hold, and slam down.
+      const FIN = 1150;
+      const SLAM = 1000;
+      at(FIN, () => {
+        const targets = charBoxes(intro, root);
+        const csz = parseFloat(getComputedStyle(words[0]).fontSize);
+        const isz = parseFloat(getComputedStyle(intro).fontSize);
+        const fg = token(hero, '--fg');
+        bub.el.animate([{ opacity: 1, translate: '0px 0px' }, { opacity: 0, translate: '0px 26px' }], { duration: 320, easing: 'cubic-bezier(0.5, 0, 0.8, 0.4)', fill: 'forwards' });
+        // While enlarged, the word grows around its own centre so the spacing grows with it.
+        const wcx = (targets[0].cx + targets[targets.length - 1].cx) / 2;
+        const flying = words.map((ch, i) => {
+          const r = box(ch, root);
+          const t = targets[i];
+          const el = temp(root, 'hi-fly');
+          Object.assign(el.style, { left: `${r.cx}px`, top: `${r.cy}px`, fontSize: `${csz}px` });
+          const heavy = temp(el, 'hi-fly__a', 'span');
+          heavy.textContent = ch.textContent;
+          // The bio's own type, its line box matched to the bio's so the baselines agree.
+          const light = temp(el, 'hi-fly__b', 'span');
+          light.textContent = ch.textContent;
+          const lh = t.h / isz;
+          Object.assign(light.style, { fontFamily: t.font, fontWeight: t.weight, color: t.color, lineHeight: `${lh}em`, height: `${lh}em`, marginTop: `${-lh / 2}em` });
+          const dy = t.cy - r.cy;
+          const wide = (k: number) => wcx + (t.cx - wcx) * k - r.cx;
+          const s = isz / csz;
+          const delay = i * 16;
+          el.animate(
+            [
+              { transform: 'translate(0px, 0px) scale(1)', easing: 'cubic-bezier(0.65, 0, 0.35, 1)' },
+              { transform: `translate(${wide(1.35)}px, ${dy - 14}px) scale(${s * 1.35})`, offset: 0.56, easing: 'cubic-bezier(0.2, 0.8, 0.3, 1)' },
+              { transform: `translate(${wide(1.6)}px, ${dy - 34}px) scale(${s * 1.6})`, offset: 0.82 },
+              { transform: `translate(${wide(1.6)}px, ${dy - 34}px) scale(${s * 1.6})`, offset: 0.9, easing: 'cubic-bezier(0.7, 0, 1, 0.6)' },
+              { transform: `translate(${wide(1)}px, ${dy}px) scale(${s})` },
+            ],
+            { duration: SLAM, delay, fill: 'both' },
+          );
+          // The heavy balloon type turns into the bio's own type while it glides.
+          heavy.animate([{ color: '#111', opacity: 1 }, { color: fg, opacity: 1, offset: 0.15 }, { color: fg, opacity: 0, offset: 0.5 }], { duration: SLAM, delay, fill: 'both' });
+          light.animate([{ opacity: 0 }, { opacity: 0, offset: 0.2 }, { opacity: 1, offset: 0.5 }], { duration: SLAM, delay, fill: 'both' });
+          return el;
+        });
+        words.forEach((ch) => (ch.style.visibility = 'hidden'));
+        // The stage holds its breath: everything but the words dims while they lift.
+        const it = box(intro, root);
+        const spot = temp(root, 'hi-spot');
+        spot.style.background = `radial-gradient(ellipse ${it.w * 1.6}px ${it.h * 4}px at ${it.cx}px ${it.cy - 34}px, transparent 30%, color-mix(in srgb, var(--bg) 72%, transparent) 100%)`;
+        spot.animate([{ opacity: 0 }, { opacity: 0, offset: 0.5 }, { opacity: 1, offset: 0.85 }, { opacity: 1 }], { duration: SLAM, fill: 'forwards' });
+        at(SLAM + 4 * 16, () => impact(flying, spot));
+      });
+    });
+
+    // The impact: the bio is swapped for positioned copies of its text so it
+    // can shake without its real layout ever moving, and the shock wave runs
+    // out from 「我是李昆積」 to the rest of the bio, the heading and the photo.
+    const impact = (flying: HTMLElement[], spot: HTMLElement) => {
+      const o0 = parseFloat(getComputedStyle(bio).opacity);
+      const pieces = cloneText(bio, intro, root);
+      flying.forEach((n) => n.remove());
+      // Landed: the rest of the page cascades in and the page can scroll again.
+      hero.dataset.intro = 'landed';
+      lockScroll(false);
+      spot.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160, fill: 'forwards' });
+      // The real bio, hidden under its copies, is set to its final state now.
+      bio.style.visibility = 'hidden';
+      bio.style.transition = 'none';
+      bio.style.opacity = '1';
+      intro.style.removeProperty('opacity');
+      if (links) {
+        links.style.transition = 'opacity 400ms ease 200ms';
+        links.style.opacity = '1';
+      }
+      const ir = box(intro, root);
+      let end = 0;
+      pieces.forEach((p) => {
+        if (p.intro) {
+          p.el.animate(
+            [{ scale: '1 1', translate: '0px 0px' }, { scale: '1.16 0.74', translate: '0px 3px', offset: 0.18 }, { scale: '0.95 1.07', translate: '0px -2px', offset: 0.5 }, { scale: '1 1', translate: '0px 0px' }],
+            { duration: 380, easing: 'ease-out' },
+          );
+          return;
+        }
+        p.el.style.opacity = String(o0);
+        end = Math.max(end, jolt(p.el, Math.hypot(p.cx - ir.cx, p.cy - ir.cy), o0));
+      });
+      // The heading and the photo feel it too, later and softer.
+      [[h1, 0.6], [avatar, 0.5]].forEach(([el, k]) => {
+        const node = el as HTMLElement;
+        node.style.transformOrigin = '50% 100%';
+        const b = box(node, root);
+        end = Math.max(end, jolt(node, Math.hypot(b.cx - ir.cx, b.cy - ir.cy), null, k as number));
+      });
+      const rp = tempSvg(root, 'hi-ripple', 120, 30, '<ellipse cx="60" cy="15" rx="58" ry="13" vector-effect="non-scaling-stroke" />');
+      Object.assign(rp.style, { left: `${ir.cx - 60}px`, top: `${ir.cy - 15}px` });
+      rp.animate([{ transform: 'scale(0.4)', opacity: 0.4 }, { transform: 'scale(4.5, 2.6)', opacity: 0 }], { duration: 520, easing: 'cubic-bezier(0.1, 0.7, 0.3, 1)', fill: 'forwards' });
+      shakeHero(8, 260);
+      // Hand the real bio back once every piece has settled.
+      at(end + 200, finish);
+    };
+  };
+
+  const setupHeroIntro = async () => {
+    const hero = document.querySelector<HTMLElement>('.hero--about[data-intro="pending"]');
+    if (!hero) return;
+    const h1 = hero.querySelector<HTMLElement>('.hero__head h1');
+    const avatar = hero.querySelector<HTMLImageElement>('.hero__head .avatar');
+    const bio = hero.querySelector<HTMLElement>('.subtitle');
+    const intro = hero.querySelector<HTMLElement>('[data-intro-line]');
+    const links = hero.querySelector<HTMLElement>('.hero-links');
+    // Without its pieces, or when the page opens scrolled past the hero, just show the hero.
+    const r = hero.getBoundingClientRect();
+    if (!h1 || !avatar || !bio || !intro || r.bottom < window.innerHeight * 0.3 || r.top > window.innerHeight * 0.7) {
+      hero.dataset.intro = 'done';
+      return;
+    }
+    // Hide the pieces, then take the hero over from the CSS.
+    [h1, avatar, bio, links].forEach((el) => el && (el.style.opacity = '0'));
+    intro.style.opacity = '0';
+    hero.dataset.intro = 'playing';
+    lockScroll(true);
+    // The heading face and the photo should be ready before the first frame.
+    await Promise.race([
+      Promise.all([document.fonts.load('900 64px "Hero Black"', TEXT + INTRO), avatar.decode()]).catch(() => {}),
+      new Promise((done) => setTimeout(done, 2500)),
+    ]);
+    if (!hero.isConnected) {
+      lockScroll(false);
+      return;
+    }
+    try {
+      play({ hero, h1, avatar, bio, intro, links });
+    } catch (err) {
+      console.error(err);
+      hero.querySelector('.hi-root')?.remove();
+      [h1, avatar, bio, intro, links].forEach((el) => el?.style.removeProperty('opacity'));
+      hero.dataset.intro = 'done';
+      lockScroll(false);
+    }
+  };
+  document.addEventListener('astro:page-load', setupHeroIntro);
+  document.addEventListener('astro:before-swap', () => stopActive?.());
+</script>

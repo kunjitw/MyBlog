@@ -76,7 +76,7 @@ const tags = Array.from(tagMap.entries())
                 href={withBase(`/?tags=${encodeURIComponent(name)}`)}
                 style={`--chip-i: ${categories.length + i}`}
               >
-                <span>#{name}</span><span class="search-browse__count">{count}</span>
+                <span>{name}</span><span class="search-browse__count">{count}</span>
               </a>
             ))}
           </div>

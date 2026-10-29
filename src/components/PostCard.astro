@@ -43,7 +43,7 @@ const sortedTags = [...post.data.tags].sort((a, b) => a.localeCompare(b));
     {sortedTags.length > 0 && (
       <div class="post-row__meta">
         {sortedTags.map((t) => (
-          <a class="tag" href={withBase(`/?tags=${encodeURIComponent(t)}`)}>#{t}</a>
+          <a class="tag" href={withBase(`/?tags=${encodeURIComponent(t)}`)}>{t}</a>
         ))}
       </div>
     )}

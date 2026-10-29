@@ -86,7 +86,7 @@ const hasFilters = categories.length > 0 || tags.length > 0 || years.length > 0;
             <button type="button" class="filter-chip filter-chip--all is-active" data-filter-value="">全部</button>
             {tags.map(([name, count]) => (
               <button type="button" class="filter-chip" data-filter-value={name}>
-                <span>#{name}</span>
+                <span>{name}</span>
                 <span class="filter-chip__count">{count}</span>
               </button>
             ))}

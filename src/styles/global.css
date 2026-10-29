@@ -550,7 +550,7 @@ blockquote p { margin: 0.4rem 0; }
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
 }
 
-/* Hero head row — desktop: `我是誰。` on the left, oversized avatar on
+/* Hero head row — desktop: `早安你好` on the left, oversized avatar on
    the right with a sliver of edge clipping (oversized hero imagery
    that bleeds past the edge). body has overflow-x:hidden, so the clipped portion is
    invisible and doesn't create a horizontal scrollbar. */
@@ -904,13 +904,6 @@ a.tag:hover {
   from { opacity: 0; transform: translateY(12px); }
   to   { opacity: 1; transform: none; }
 }
-@media (prefers-reduced-motion: reduce) {
-  .filter.is-ready .filter-chip,
-  .filter-chip.is-restaggering,
-  [data-posts-grid].is-ready .post-row:not([hidden]) {
-    animation: none;
-  }
-}
 
 /* About-page initial reveal — same vocabulary as the post-list
    cascade (chip + row stagger). Each top-level section cascades
@@ -938,13 +931,6 @@ body:has(.about-end).about-ready .posts-section {
 @keyframes about-section-in {
   from { opacity: 0; transform: translateY(20px); }
   to   { opacity: 1; transform: none; }
-}
-@media (prefers-reduced-motion: reduce) {
-  body:has(.about-end) .hero,
-  body:has(.about-end) .posts-section {
-    opacity: 1;
-    animation: none;
-  }
 }
 .filter__row {
   display: flex;
@@ -1213,11 +1199,6 @@ body:has(.site-header.is-hidden) .filter-pinned {
   top: 0;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .site-header { transition: background var(--dur-fast) var(--ease-standard), top 0s; }
-  .filter-pinned { transition: none; }
-  .filter-pinned__chip { transition: none; }
-}
 
 @media (max-width: 640px) {
   .filter-pinned__inner { padding: 0.5rem 1rem; gap: 0.5rem; }
@@ -1641,11 +1622,6 @@ body:has([data-about-end]) .site-footer {
   0%, 100% { opacity: 0.55; transform: translate(-50%, -50%) scale(0.9);  }
   50%      { opacity: 1;    transform: translate(-50%, -50%) scale(1.06); }
 }
-@media (prefers-reduced-motion: reduce) {
-  .about-end__hint-trail::before,
-  .about-end__hint-trail::after { animation: none; opacity: 0.7; }
-  .about-end__hint-glow         { animation: none; opacity: 0.8; }
-}
 
 /* Minimal identity card: a single soft-rounded panel, no chrome
    beyond a quiet shadow and a near-invisible hairline. The avatar
@@ -1905,10 +1881,6 @@ body:has([data-about-end]) .site-footer {
   background: transparent;
   opacity: 0.3;
   translate: 0 2px;
-}
-@media (prefers-reduced-motion: reduce) {
-  /* No ticking fill — cells are simply shown full. */
-  .about-end__actions.is-armed .x-gauge__seg { animation: none; }
 }
 /* After the explosion the gauge has served its purpose — fades out
    for good. Needs to out-specify `.about-end__actions.is-armed
@@ -2824,47 +2796,11 @@ body:has([data-about-end]) .site-footer {
   100% { opacity: 0; scale: 1.6 1; translate: 0 -4px; }
 }
 
+/* Under reduced motion the toy keeps all its effects except the two
+   full-frame white flashes (a photosensitivity risk). */
 @media (prefers-reduced-motion: reduce) {
-  .about-end__action {
-    transition: background var(--dur-fast) var(--ease-standard),
-                border-color var(--dur-fast) var(--ease-standard),
-                color var(--dur-fast) var(--ease-standard);
-    animation: none !important;
-  }
-  .about-end__frame.is-tap-shake { animation: none; }
-  .tap-particle,
-  .tap-spark,
-  .tap-ring,
-  .tap-smoke,
   .tap-whiteflash,
-  .charge-mote,
-  .charge-vignette,
-  .debris-dust,
-  .tap-flash,
-  .tap-burst { animation: none; opacity: 0; }
-  /* Speech bubbles still appear (the narrative beat is important),
-     just shown static instead of springing in. */
-  .speech-bubble {
-    animation: none;
-    opacity: 1;
-    transform: translate(-50%, -100%) rotate(var(--rotate, 0deg)) scale(1);
-  }
-  /* Damage state — show final state without the strike / draw /
-     bloom animations playing out. The residual scars are the point. */
-  .card-stain { animation: none; opacity: 1; transform: none; }
-  .pass-crack-svg path {
-    animation: none;
-    stroke-dashoffset: 0;
-  }
-  .blood-streak { animation: none; height: var(--target-height, 40%); opacity: 0.5; }
-  .blood-streak::after { animation: none; opacity: 0.5; }
-  .pass-debris {
-    animation: none;
-    opacity: 1;
-    transform:
-      translate(calc(-50% + var(--dx, 0px)), calc(-50% + var(--dy, 0px)))
-      rotate(var(--rotate, 0deg));
-  }
+  .tap-flash { animation: none; opacity: 0; }
 }
 
 /* ── Completion crown ─────────────────────────────────────────────
@@ -3671,10 +3607,6 @@ body:has([data-about-end]) .site-footer {
 .toc-sheet__item:last-child .toc-sheet__link {
   border-bottom: none;
 }
-@media (prefers-reduced-motion: reduce) {
-  .toc-sheet,
-  .toc-sheet__panel { transition: none; }
-}
 
 /* ===============================================================
    Reading progress
@@ -3721,14 +3653,14 @@ body:has([data-about-end]) .site-footer {
 }
 [data-reveal].is-visible { opacity: 1; transform: none; }
 
+/* Reduced motion is handled per effect, not with a blanket kill
+   switch: the site's small fades, staggers and the glitch text keep
+   running for everyone (many people turn animations off for speed,
+   not comfort). Only whole-screen motion is dropped: page and theme
+   view transitions, the theme-overlay sequence, smooth scrolling,
+   and the white flashes. */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
   [data-reveal] { opacity: 1; transform: none; }
-  .hero h1 { background: none; -webkit-text-fill-color: var(--fg); color: var(--fg); }
 }
 
 /* ===============================================================
@@ -4002,12 +3934,6 @@ body:has([data-about-end]) .site-footer {
     text-shadow:
       1px 0 color-mix(in srgb, var(--hud-red) 55%, transparent),
       -1px 0 rgba(0, 229, 255, 0.55);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .glitch-text {
-    animation: none;
-    text-shadow: none;
   }
 }
 
@@ -4736,9 +4662,6 @@ body, .site-header, code, pre, blockquote, .tag {
   .search-modal__kbd { display: none; }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .search-modal__panel { transition: none; }
-}
 
 /* ===============================================================
    Flashbang sequence — plays after confirming light mode.
@@ -4909,3 +4832,447 @@ body, .site-header, code, pre, blockquote, .tag {
   :root.theme-wipe::view-transition-new(root) { animation: none; }
 }
 
+/* ===============================================================
+   Design refresh (2026-10, v2): square controls, separation by
+   layout. Overrides the earlier rules for the same classes.
+   - Everything clickable is a square-cornered button with a hairline
+     border, so it reads as a control. Read-only text (a row's
+     category, dates) has no box.
+   - Selection changes only the fill and the border: neutral for
+     「全部」 and 「關閉」 (no filter), accent for an applied filter.
+   - Fields are separated by columns and tone, never by 「·」. A date
+     range is two fixed columns (.period): start, then end.
+   =============================================================== */
+:root {
+  --ui-hover: rgba(255, 255, 255, 0.06);
+  --ui-selected: rgba(255, 255, 255, 0.10);
+}
+:root[data-theme="light"] {
+  --ui-hover: rgba(0, 0, 0, 0.04);
+  --ui-selected: rgba(0, 0, 0, 0.06);
+}
+
+/* ---- Home filter: four rows ruled apart, no outer frame --------- */
+.filter {
+  display: block;
+  margin: 0 0 1.5rem;
+}
+.filter__row {
+  display: grid;
+  grid-template-columns: 3.5rem minmax(0, 1fr);
+  align-items: start;
+  gap: 0 0.75rem;
+  padding: 0.625rem 0;
+}
+.filter__row + .filter__row { border-top: 1px solid var(--border); }
+.filter__label {
+  min-width: 0;
+  padding: 0;
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  line-height: 28px;
+  color: var(--fg-dim);
+}
+.filter__chips { gap: 6px; }
+/* Buttons follow the post-row hover language: at rest a filled square
+   with a hairline; on hover the text and border take the accent and
+   the button lifts; pressed or selected, it fills with the accent. */
+.filter-chip {
+  height: 28px;
+  gap: 6px;
+  padding: 0 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 2px;
+  background: var(--bg-elev);
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--fg-soft);
+  transition:
+    color var(--dur-fast) var(--ease-standard),
+    background var(--dur-fast) var(--ease-standard),
+    border-color var(--dur-fast) var(--ease-standard),
+    transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.filter-chip:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+.filter-chip.is-active,
+.filter-chip--all.is-active,
+.filter-chip.is-active:hover {
+  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.filter-chip:active { transform: scale(0.96); }
+.filter-chip__count {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--fg-dim);
+  opacity: 1;
+  font-variant-numeric: tabular-nums;
+}
+.filter-chip:hover .filter-chip__count { color: inherit; opacity: 0.7; }
+.filter-chip.is-active .filter-chip__count { color: #fff; opacity: 0.75; }
+
+/* Pinned bar: the same square, accent-marked token as a selected chip,
+   so the chip that glides up looks like the one it came from. */
+.filter-pinned__label {
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--fg-dim);
+}
+.filter-pinned__chip {
+  height: 28px;
+  gap: 6px;
+  padding: 0 6px 0 10px;
+  border: 1px solid var(--accent);
+  border-radius: 2px;
+  background: var(--accent);
+  color: #fff;
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+}
+.filter-pinned__chip:hover {
+  background: color-mix(in srgb, var(--accent) 84%, #000 16%);
+  border-color: color-mix(in srgb, var(--accent) 84%, #000 16%);
+}
+.filter-pinned__x {
+  width: 16px;
+  height: 16px;
+  border-radius: 2px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.875rem;
+}
+.filter-pinned__chip:hover .filter-pinned__x {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+.filter-pinned__clear {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 2px;
+  background: var(--bg-elev);
+  color: var(--fg-soft);
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+}
+.filter-pinned__clear:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* ---- Post rows, post header, tags ------------------------------ */
+.post-row__side { gap: 0.3rem; }
+/* Category under the date is read-only metadata: plain text. */
+.post-card__cat {
+  display: inline;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  line-height: 1.5;
+  color: var(--fg-dim);
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 3px;
+  transition: color var(--dur-fast) var(--ease-standard),
+              text-decoration-color var(--dur-fast) var(--ease-standard);
+}
+.post-card__cat:hover {
+  color: var(--fg);
+  background: none;
+  text-decoration-color: var(--border-strong);
+}
+/* On the article page the category is the one accent mark above the title. */
+.post-header__cat .post-card__cat {
+  color: var(--accent);
+  font-size: 0.875rem;
+}
+.post-header__cat .post-card__cat:hover {
+  color: var(--accent);
+  text-decoration-color: currentColor;
+}
+
+/* Tags are links that filter the list, so they are small square buttons. */
+.post-row__meta,
+.post-meta--tags { gap: 6px; }
+.tag {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 7px;
+  border: 1px solid var(--border-strong);
+  border-radius: 2px;
+  background: var(--bg-elev);
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1;
+  color: var(--fg-soft);
+  text-decoration: none;
+  transition:
+    color var(--dur-fast) var(--ease-standard),
+    border-color var(--dur-fast) var(--ease-standard),
+    transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+a.tag:hover {
+  color: var(--accent);
+  background: var(--bg-elev);
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+a.tag:active { transform: scale(0.96); }
+
+/* Date and reading time: a wide gap and two tones instead of 「·」. */
+.post-meta--head { gap: 0.25rem 1.5em; }
+.post-meta__item {
+  font-family: var(--font-sans);
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--fg-dim);
+}
+
+.post-nav__dir {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  width: 100%;
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  letter-spacing: 0;
+  color: var(--fg-dim);
+}
+.post-nav__date {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Search modal ---------------------------------------------- */
+.search-sec__label {
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--fg-dim);
+}
+.search-sec__chips { gap: 6px; }
+.search-browse__chip,
+.search-browse__chip--cat {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 2px;
+  background: var(--bg-elev);
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--fg-soft);
+}
+.search-browse__chip:hover,
+.search-browse__chip--cat:hover {
+  color: var(--accent);
+  background: var(--bg-elev);
+  border-color: var(--accent);
+}
+.search-browse__count {
+  font-size: 0.75rem;
+  color: var(--fg-dim);
+  opacity: 1;
+  font-variant-numeric: tabular-nums;
+}
+.search-result__meta {
+  gap: 0.2rem 1.1em;
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+}
+.search-result__meta time {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.search-result__cat {
+  color: var(--fg-soft);
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 500;
+}
+.search-result__tags {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.85em;
+}
+
+/* ---- About lists ----------------------------------------------- */
+/* The timeline column holds only the line and the dots; row rules
+   start at the content column so they never cross the line. */
+.about-list::before {
+  /* Starts at the first dot's centre (see the dot rule below). */
+  top: calc(0.65rem + 0.98rem * 0.8);
+  background: linear-gradient(
+    180deg,
+    var(--accent) 0,
+    var(--border-strong) 2.5rem,
+    var(--border-strong) calc(100% - 1.5rem),
+    transparent 100%
+  );
+}
+.about-list > li + li { border-top: 0; }
+.about-list > li + li::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 1.7rem;
+  right: 0;
+  height: 1px;
+  background: var(--border);
+}
+
+/* Vertical centring: every field on an entry's first line gets the
+   same line box as the title (0.98rem × 1.6), so text of different
+   sizes shares one centre, and the dot is centred on that line. */
+.about-list > li::before {
+  top: calc(0.65rem + (0.98rem * 1.6 - 10px) / 2);
+}
+
+/* Organisation left, period flush right; wraps to two lines on phones. */
+.about-list__sub--split {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.15rem 1.5rem;
+}
+.about-list__row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: start;
+  gap: 0.25rem 1.5rem;
+}
+.about-list__row > .period { line-height: calc(0.98rem * 1.6); }
+/* A range reads 「2022/09 至 2024/06」: the dates carry the weight and
+   「至」 is small and quiet, so the eye lands on the numbers. */
+.period {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.5em;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--fg-soft);
+  font-variant-numeric: tabular-nums;
+}
+.period__to {
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  color: var(--fg-dim);
+}
+.about-kicker {
+  display: block;
+  margin-bottom: 0.1rem;
+  font-size: 0.8125rem;
+  color: var(--fg-dim);
+}
+/* ZeroDay reports: date | findings | report ID in fixed columns. */
+/* Each report is one link to its HITCON page. Hover follows the post
+   rows: the row slides right and the findings and ID take the accent. */
+.about-report {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr) max-content;
+  column-gap: 1.25rem;
+  align-items: start;
+  color: inherit;
+  text-decoration: none;
+  transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.about-report:hover {
+  transform: translateX(4px);
+  opacity: 1;
+}
+.about-report__vulns,
+.about-report__id {
+  transition: color var(--dur-fast) var(--ease-standard);
+}
+.about-report:hover .about-report__vulns,
+.about-report:hover .about-report__id {
+  color: var(--accent);
+}
+.about-report__date,
+.about-report__id {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  line-height: calc(0.98rem * 1.6);
+  color: var(--fg-dim);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.about-report__vulns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem 1.1em;
+}
+
+/* ---- 404 actions: square bordered buttons ----------------------- */
+.notfound__actions { gap: 8px; }
+.notfound__actions a {
+  height: 36px;
+  padding: 0 16px;
+  border: 1px solid var(--border-strong);
+  border-radius: 2px;
+  background: var(--bg-elev);
+  color: var(--fg);
+  transition:
+    color var(--dur-fast) var(--ease-standard),
+    border-color var(--dur-fast) var(--ease-standard),
+    transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.notfound__actions a:hover {
+  color: var(--accent);
+  background: var(--bg-elev);
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+.notfound__actions a:active { transform: scale(0.96); }
+
+@media (max-width: 640px) {
+  /* Label above its options instead of in a side column. */
+  .filter__row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px 0;
+  }
+  .filter__label { line-height: 1.4; }
+  .filter-chip { height: 32px; }
+  .post-row__side { gap: 1.1rem; }
+  .filter-pinned__chip { padding: 0 5px 0 9px; font-size: 0.78rem; }
+  .filter-pinned__clear { padding: 0 9px; font-size: 0.78rem; }
+  .about-report {
+    grid-template-columns: minmax(0, 1fr) max-content;
+    grid-template-areas: "date id" "vulns vulns";
+    row-gap: 0.2rem;
+  }
+  .about-report__date { grid-area: date; }
+  .about-report__id { grid-area: id; }
+  .about-report__vulns { grid-area: vulns; }
+}

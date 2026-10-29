@@ -477,11 +477,15 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? Astro.url);
           const q = input.value.trim();
           results.innerHTML = current.map((p, i) => {
             const date = p.pubDate.slice(0, 10);
+            // Fields are separated by spacing in CSS; the hidden comma only
+            // gives screen readers a pause between them.
             const meta = [
               p.category ? `<span class="search-result__cat">${highlightMatch(p.category, q)}</span>` : '',
               `<time>${date}</time>`,
-              ...p.tags.map((t) => `<span>#${highlightMatch(t, q)}</span>`),
-            ].filter(Boolean).join('<span aria-hidden="true">·</span>');
+              p.tags.length
+                ? `<span class="search-result__tags">${p.tags.map((t) => `<span>${highlightMatch(t, q)}</span>`).join('')}</span>`
+                : '',
+            ].filter(Boolean).join('<span class="visually-hidden">，</span>');
             return `
               <li>
                 <a class="search-result${i === active ? ' is-active' : ''}"
@@ -673,15 +677,15 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? Astro.url);
           document.removeEventListener('scroll', w.__headerHideListener);
         }
 
-        const reduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
+        // The header slide runs under reduced motion too: it is a short,
+        // header-sized move, not whole-screen motion.
         const show = () => {
-          if (!reduced()) header.style.transition = TOP_TRANSITION;
+          header.style.transition = TOP_TRANSITION;
           header.classList.remove('is-hidden');
         };
 
         const hide = () => {
-          if (!reduced()) header.style.transition = TOP_TRANSITION;
+          header.style.transition = TOP_TRANSITION;
           header.classList.add('is-hidden');
         };
 
@@ -877,8 +881,8 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? Astro.url);
           const newVisible = postData.map((p) => matchCat(p) && matchYear(p) && matchTags(p) && matchNoAI(p));
           let shown = newVisible.filter((v) => v).length;
 
-          const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-          const shouldAnimate = renderCount > 0 && !reduced;
+          // Opacity-only crossfade, so it also runs under reduced motion.
+          const shouldAnimate = renderCount > 0;
 
           if (shouldAnimate) {
             for (let i = 0; i < cards.length; i++) {
@@ -920,7 +924,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? Astro.url);
           if (selectedYear) out.push({ kind: 'year', value: selectedYear, label: selectedYear });
           if (selectedCat) out.push({ kind: 'cat', value: selectedCat, label: selectedCat });
           for (const t of originalTagOrder) {
-            if (selectedTags.has(t)) out.push({ kind: 'tag', value: t, label: '#' + t });
+            if (selectedTags.has(t)) out.push({ kind: 'tag', value: t, label: t });
           }
           return out;
         };

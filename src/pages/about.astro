@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import AboutIntro from '../components/AboutIntro.astro';
 import { withBase } from '../utils/url';
 
 // HITCON ZeroDay reports — anonymized (某單位), newest first
@@ -23,7 +24,7 @@ const reports = [
       below drives the per-slot --about-*-progress CSS variables. */}
   <div class="about-card" data-about-card aria-hidden="true">
     <div class="about-card__inner">
-      <span class="about-card__pill" data-card-slot="bio" data-card-target="name">Rafe（李昆積）</span>
+      <span class="about-card__pill" data-card-slot="bio" data-card-target="name">李昆積</span>
       <span class="about-card__pill" data-card-slot="work" data-card-target="work-role">任職於紅隊演練部門</span>
       <span class="about-card__pill" data-card-slot="cert" data-card-target="cert">OSCP+</span>
       <span class="about-card__pill" data-card-slot="edu" data-card-target="edu-master">北科資工碩士</span>
@@ -47,11 +48,11 @@ const reports = [
     </div>
   </div>
 
-  <section class="hero hero--about" style="padding-top: 4rem" data-card-trigger="bio">
+  <section class="hero hero--about" style="padding-top: 4rem" data-card-trigger="bio" data-intro="pending">
     {/* H1 + avatar share a row — avatar is intentionally outsized so
         its circle gets clipped a touch by the page edges. */}
     <div class="hero__head">
-      <h1>我是誰。</h1>
+      <h1>早安你好</h1>
       <img
         class="avatar"
         src={withBase('/avatar.jpg')}
@@ -62,7 +63,9 @@ const reports = [
       />
     </div>
     <p class="subtitle">
-      我是 <span class="bio-keyword" data-card-source="name">Rafe（李昆積）</span>，目前任職於安碁資訊紅隊演練部門，已取得 OSCP+ 證照，具紅隊演練、滲透測試、網頁以及主機弱點掃描等經驗，並協助部門開發專案相關工具、撰寫部門相關教學內容，目前專注在研究 LLM 相關工具與模型資訊，嘗試將 LLM 加入現有工作流提高效率。碩士畢業於臺北科技大學資訊工程系，在學期間加入<span class="bio-keyword" data-card-source="lab">資安實驗室</span>，從碩一開始參加 CTF 競賽、AIS3 課程以及惡意程式分析訓練營等資安相關活動，同時參與醫院產學合作計畫，負責處理 LLM 大語言模型 RAG 資料流、Prompt 與安全設計。
+      {/* The employer is the same undisclosed role as the first 工作經歷
+          entry, so it reuses that entry's glitch-text redaction. */}
+      <span data-intro-line>我是<span class="bio-keyword" data-card-source="name">李昆積</span></span>，目前任職於<span class="visually-hidden">（公司尚未公開）</span><span class="glitch-text glitch-text--dim" data-glitch-text data-glitch-len="10" style="--glitch-w: 11ch" aria-hidden="true">ᚠᚢᚦᚨᚱᛊᛏᛒᛖᛗ</span> 擔任紅隊演練工程師，已取得 OffSec OSCP+, HTB CPTS 等資安證照，具紅隊演練、滲透測試、網頁以及主機弱點掃描等專案實務經驗，並協助部門開發及維護專案相關工具，目前專注在研究 LLM 相關工具與模型資訊，嘗試將 LLM 加入現有工作流提高效率。碩士畢業於臺北科技大學資訊工程系，在學期間加入<span class="bio-keyword" data-card-source="lab">資安實驗室</span>，從碩一開始參加 CTF 競賽、AIS3 課程以及惡意程式分析訓練營等資安相關活動，同時參與醫院產學合作計畫，負責處理 LLM 大語言模型 RAG 資料流、Prompt 與安全設計。
     </p>
     <ul class="hero-links">
       <li>
@@ -70,38 +73,46 @@ const reports = [
         <a href="mailto:zer2.main@gmail.com">zer2.main@gmail.com</a>
       </li>
     </ul>
+    <AboutIntro />
   </section>
 
   <section class="posts-section" data-card-trigger="work">
     <h2 class="posts-section__label">工作經歷</h2>
     <ul class="about-list">
-      {/* Next role — not announced yet. Both the position and the
-          employer render as live-scrambling glitch text ("signal
-          interference"); the static garble is the no-JS fallback and
-          the visually-hidden spans carry a neutral placeholder for
-          screen readers. Only the start date is in the clear. No real
+      {/* Current role — the employer is not announced yet. It renders
+          as live-scrambling glitch text ("signal interference"); the
+          static garble is the no-JS fallback and the visually-hidden
+          span carries a neutral placeholder for screen readers. No real
           value is stored anywhere — the scramble is generated from a
           fixed character pool, it is not a masked real string. */}
+      {/* Organisation on the left, period flush right: position does the
+          separating, so no 「·」 between them. A range reads 「2022/09 至
+          2024/06」: the dates carry the weight, 「至」 is set small and
+          quiet (.period__to). */}
       <li>
-        <b>
-          <span class="visually-hidden">職稱尚未公開</span>
-          <span class="glitch-text" data-glitch-text data-glitch-len="7" style="--glitch-w: 8ch" aria-hidden="true">ᚦᚨᚱᚲᚷᛁᛉ</span>
-        </b>
-        <span class="about-list__sub">
-          <span class="visually-hidden">公司尚未公開</span>
-          <span class="glitch-text glitch-text--dim" data-glitch-text data-glitch-len="10" style="--glitch-w: 11ch" aria-hidden="true">ᚠᚢᚦᚨᚱᛊᛏᛒᛖᛗ</span>
-          <span> · 2026/08 至今</span>
-        </span>
-      </li>
-      <li data-card-source="work-role">
         <b>紅隊演練工程師</b>
-        <span class="about-list__sub">
-          <a href="https://www.acercsi.com" target="_blank" rel="noopener">安碁資訊股份有限公司</a> · 2025/03 – 2026/07
+        <span class="about-list__sub about-list__sub--split">
+          <span class="about-list__org">
+            <span class="visually-hidden">公司尚未公開</span>
+            <span class="glitch-text glitch-text--dim" data-glitch-text data-glitch-len="10" style="--glitch-w: 11ch" aria-hidden="true">ᚠᚢᚦᚨᚱᛊᛏᛒᛖᛗ</span>
+          </span>
+          <span class="period"><time>2026/08</time><span class="period__to">至今</span></span>
         </span>
         <ul class="about-bullets">
           <li>負責執行紅隊演練、滲透測試、網頁以及主機弱點掃描等專案</li>
-          <li>協助部門開發專案相關工具、撰寫部門相關教學內容</li>
-          <li>近期協助將 LLM 加入部門現有工作流提高效率</li>
+          <li>協助部門開發及維護專案相關工具</li>
+          <li>協助將 LLM 加入部門現有工作流提高效率</li>
+        </ul>
+      </li>
+      <li data-card-source="work-role">
+        <b>紅隊演練工程師</b>
+        <span class="about-list__sub about-list__sub--split">
+          <span class="about-list__org"><a href="https://www.acercsi.com" target="_blank" rel="noopener">安碁資訊股份有限公司</a></span>
+          <span class="period"><time>2025/03</time><span class="period__to">至</span><time>2026/07</time></span>
+        </span>
+        <ul class="about-bullets">
+          <li>負責執行紅隊演練、滲透測試、網頁以及主機弱點掃描等專案</li>
+          <li>協助部門開發及維護專案相關工具</li>
         </ul>
       </li>
     </ul>
@@ -112,10 +123,14 @@ const reports = [
     <ul class="about-list">
       <li data-card-source="edu-master">
         <b>碩士</b>
-        <span class="about-list__sub">國立臺北科技大學 資訊工程學系 <a href="https://is1ab.com/" target="_blank" rel="noopener">資訊安全實驗室</a> · 2022/09 – 2024/06</span>
+        <span class="about-list__sub about-list__sub--split">
+          <span class="about-list__org">國立臺北科技大學 資訊工程學系 <a href="https://is1ab.com/" target="_blank" rel="noopener">資訊安全實驗室</a></span>
+          <span class="period"><time>2022/09</time><span class="period__to">至</span><time>2024/06</time></span>
+        </span>
         <ul class="about-bullets">
           <li data-card-source="edu-thesis">
-            <b>畢業論文 · <a href="https://cccisa.ccisa.org.tw/article/download/3084/3108" target="_blank" rel="noopener">Prompt Injection 分析與緩解策略</a></b>
+            <span class="about-kicker">畢業論文</span>
+            <b><a href="https://cccisa.ccisa.org.tw/article/download/3084/3108" target="_blank" rel="noopener">Prompt Injection 分析與緩解策略</a></b>
             <p>以大語言模型聊天機器人為例，系統化整理 LLM Prompt Injection 攻擊面與緩解流程。</p>
           </li>
           <li data-card-source="edu-rag">
@@ -126,10 +141,14 @@ const reports = [
       </li>
       <li>
         <b>學士</b>
-        <span class="about-list__sub">國立宜蘭大學 資訊工程學系 · 2017/09 – 2021/06</span>
+        <span class="about-list__sub about-list__sub--split">
+          <span class="about-list__org">國立宜蘭大學 資訊工程學系</span>
+          <span class="period"><time>2017/09</time><span class="period__to">至</span><time>2021/06</time></span>
+        </span>
         <ul class="about-bullets">
           <li>
-            <b>畢業專題 · 腦波疲勞識別系統</b>
+            <span class="about-kicker">畢業專題</span>
+            <b>腦波疲勞識別系統</b>
             <p>透過腦波儀收集四種不同疲勞程度的腦波，使用 Python 訓練 SVM 模型，最後透過 SVM 模型對輸入的腦波資訊進行分類，達到判斷疲勞程度的效果。</p>
           </li>
         </ul>
@@ -140,13 +159,13 @@ const reports = [
   <section class="posts-section" data-card-trigger="cert">
     <h2 class="posts-section__label">證照</h2>
     <ul class="about-list">
-      <li>
-        <b>HTB CPTS</b>（HTB Certified Penetration Testing Specialist）
-        <span class="about-list__sub">2026/04</span>
+      <li class="about-list__row">
+        <span><b>HTB CPTS</b>（HTB Certified Penetration Testing Specialist）</span>
+        <time class="period period--single">2026/04</time>
       </li>
-      <li data-card-source="cert">
-        <b>OSCP+</b>（Offensive Security Certified Professional+）
-        <span class="about-list__sub">2025/11</span>
+      <li class="about-list__row" data-card-source="cert">
+        <span><b>OSCP+</b>（Offensive Security Certified Professional+）</span>
+        <time class="period period--single">2025/11</time>
       </li>
     </ul>
   </section>
@@ -157,10 +176,18 @@ const reports = [
       <a class="section-link" data-card-source="hitcon" href="https://zeroday.hitcon.org/user/zer2/vulnerability" target="_blank" rel="noopener">完整紀錄 →</a>
     </h2>
     <ul class="about-list">
+      {/* Date, findings, report ID in fixed columns. 「某單位」 was the same
+          on every row, so it is gone; the vuln types are listed as
+          separate items spaced apart instead of joined with 「·」. */}
       {reports.map((r) => (
         <li>
-          <b>{r.vuln}</b>
-          <span class="about-list__sub">{r.date.replaceAll('-', '/')} · 某單位 · {r.id}</span>
+          <a class="about-report" href={`https://zeroday.hitcon.org/vulnerability/${r.id}`} target="_blank" rel="noopener">
+            <time class="about-report__date">{r.date.replaceAll('-', '/')}</time>
+            <b class="about-report__vulns">
+              {r.vuln.split(' · ').map((v) => <span>{v}</span>)}
+            </b>
+            <span class="about-report__id">{r.id}</span>
+          </a>
         </li>
       ))}
     </ul>
@@ -1485,11 +1512,11 @@ const reports = [
       }
       return out;
     };
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    // The scramble runs under reduced motion too: it swaps characters in
+    // place and moves nothing on screen.
     for (const el of els) {
       const len = parseInt(el.dataset.glitchLen ?? '8', 10);
       el.textContent = scramble(len);
-      if (reduced) continue; // static garble, no churn
       if ((el as any).__glitchTimer) continue;
       (el as any).__glitchTimer = window.setInterval(() => {
         if (!el.isConnected) {

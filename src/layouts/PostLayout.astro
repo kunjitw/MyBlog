@@ -37,16 +37,10 @@ const sortedTags = [...post.tags].sort((a, b) => a.localeCompare(b));
       <p class="post-meta post-meta--head">
         <FormattedDate date={post.pubDate} />
         {post.updatedDate && (
-          <>
-            <span class="sep">·</span>
-            <span>更新於 <FormattedDate date={post.updatedDate} /></span>
-          </>
+          <span class="post-meta__item">更新於 <FormattedDate date={post.updatedDate} /></span>
         )}
         {readingMinutes && (
-          <>
-            <span class="sep">·</span>
-            <span>約 {readingMinutes} 分鐘</span>
-          </>
+          <span class="post-meta__item">約 {readingMinutes} 分鐘</span>
         )}
       </p>
       {post.category && (
@@ -58,7 +52,7 @@ const sortedTags = [...post.tags].sort((a, b) => a.localeCompare(b));
       {sortedTags.length > 0 && (
         <p class="post-meta post-meta--tags">
           {sortedTags.map((t) => (
-            <a class="tag" href={withBase(`/?tags=${encodeURIComponent(t)}`)}>#{t}</a>
+            <a class="tag" href={withBase(`/?tags=${encodeURIComponent(t)}`)}>{t}</a>
           ))}
         </p>
       )}
@@ -73,7 +67,10 @@ const sortedTags = [...post.tags].sort((a, b) => a.localeCompare(b));
     <nav class="post-nav" aria-label="文章導覽">
       {older ? (
         <a class="post-nav__card" href={withBase(`/posts/${older.id}/`)}>
-          <span class="post-nav__dir">← 上一篇 · {older.pubDate.toLocaleDateString('en-CA')}</span>
+          <span class="post-nav__dir">
+            <span>← 上一篇</span>
+            <time class="post-nav__date">{older.pubDate.toLocaleDateString('en-CA')}</time>
+          </span>
           <span class="post-nav__title">{older.title}</span>
         </a>
       ) : (
@@ -81,7 +78,10 @@ const sortedTags = [...post.tags].sort((a, b) => a.localeCompare(b));
       )}
       {newer && (
         <a class="post-nav__card post-nav__card--next" href={withBase(`/posts/${newer.id}/`)}>
-          <span class="post-nav__dir">{newer.pubDate.toLocaleDateString('en-CA')} · 下一篇 →</span>
+          <span class="post-nav__dir">
+            <time class="post-nav__date">{newer.pubDate.toLocaleDateString('en-CA')}</time>
+            <span>下一篇 →</span>
+          </span>
           <span class="post-nav__title">{newer.title}</span>
         </a>
       )}
